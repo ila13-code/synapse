@@ -15,11 +15,9 @@ class DatabaseManager:
         return self.conn
     
     def init_db(self):
-        """Inizializza il database con le tabelle necessarie"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        # Tabella subjects (materie)
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS subjects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

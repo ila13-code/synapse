@@ -1,15 +1,16 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QPushButton, QTabWidget, QFileDialog,
                              QScrollArea, QFrame, QGridLayout, QMessageBox,
-                             QProgressDialog, QCheckBox)
+                             QProgressDialog, QCheckBox,QTextEdit)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QFont, QColor, QTextOption
 from database.db_manager import DatabaseManager
 from services.file_service import FileService
 from services.ai_service import AIService
 from services.export_service import ExportService
 from ui.styles import MAIN_STYLE
 from ui.dialogs import EditFlashcardDialog
+from ui.icons import IconProvider
 import os
 
 class GenerationThread(QThread):
@@ -58,28 +59,37 @@ class SubjectWindow(QMainWindow):
         self.setMinimumSize(1200, 800)
         self.setStyleSheet(MAIN_STYLE)
         
+        # Widget centrale
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
- 
+        
+        # Header
         header = self.create_header()
         main_layout.addWidget(header)
         
+        # Tab widget
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
         
         # Tabs
         self.documents_tab = self.create_documents_tab()
-        self.tabs.addTab(self.documents_tab, "📄 Documenti")
+        documents_icon = IconProvider.get_icon("document", 18, "#262626")
+        self.tabs.addTab(self.documents_tab, "Documenti")
+        self.tabs.setTabIcon(0, documents_icon)
         
         self.generate_tab = self.create_generate_tab()
-        self.tabs.addTab(self.generate_tab, "✨ Genera")
+        generate_icon = IconProvider.get_icon("sparkles", 18, "#262626")
+        self.tabs.addTab(self.generate_tab, "Genera")
+        self.tabs.setTabIcon(1, generate_icon)
         
         self.flashcards_tab = self.create_flashcards_tab()
-        self.tabs.addTab(self.flashcards_tab, "📚 Flashcard")
+        flashcards_icon = IconProvider.get_icon("cards", 18, "#262626")
+        self.tabs.addTab(self.flashcards_tab, "Flashcard")
+        self.tabs.setTabIcon(2, flashcards_icon)
         
         main_layout.addWidget(self.tabs)
     
@@ -94,12 +104,15 @@ class SubjectWindow(QMainWindow):
         
         layout = QHBoxLayout(header)
         layout.setContentsMargins(30, 15, 30, 15)
-
-        back_btn = QPushButton("← Indietro")
+        
+        # Pulsante indietro
+        back_btn = QPushButton(" Indietro")
+        back_btn.setIcon(IconProvider.get_icon("arrow-left", 16, "#262626"))
         back_btn.setProperty("class", "secondary")
         back_btn.clicked.connect(self.close)
         layout.addWidget(back_btn)
-
+        
+        # Info materia con indicatore colore
         info_layout = QHBoxLayout()
         info_layout.setSpacing(12)
         
@@ -191,9 +204,8 @@ class SubjectWindow(QMainWindow):
         layout.setSpacing(16)
         
         # Icona
-        icon_label = QLabel("📤")
-        icon_label.setStyleSheet("font-size: 48px;")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, "upload", 48, "#8B5CF6")
         layout.addWidget(icon_label)
         
         # Titolo
@@ -243,8 +255,8 @@ class SubjectWindow(QMainWindow):
         layout.setSpacing(16)
         
         # Icona documento
-        icon_label = QLabel("📄")
-        icon_label.setStyleSheet("font-size: 32px;")
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, "file_text", 32, "#8B5CF6")
         layout.addWidget(icon_label)
         
         # Info documento
@@ -273,7 +285,8 @@ class SubjectWindow(QMainWindow):
         layout.addStretch()
         
         # Pulsante elimina
-        delete_btn = QPushButton("🗑️")
+        delete_btn = QPushButton()
+        delete_btn.setIcon(IconProvider.get_icon("trash", 18, "#EF4444"))
         delete_btn.setProperty("class", "icon-button")
         delete_btn.setFixedSize(36, 36)
         delete_btn.clicked.connect(lambda: self.delete_document(doc['id']))
@@ -299,9 +312,8 @@ class SubjectWindow(QMainWindow):
         gen_layout.setSpacing(24)
         
         # Icona principale
-        icon_label = QLabel("✨")
-        icon_label.setStyleSheet("font-size: 64px;")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, "sparkles", 64, "#8B5CF6")
         gen_layout.addWidget(icon_label)
         
         # Titolo
@@ -328,7 +340,7 @@ class SubjectWindow(QMainWindow):
         gen_layout.addWidget(desc_label)
         
         # Statistiche documenti
-        self.doc_count_label = QLabel("📄 Documenti disponibili: 0")
+        self.doc_count_label = QLabel("Documenti disponibili: 0")
         self.doc_count_label.setStyleSheet("""
             font-size: 16px;
             font-weight: 600;
@@ -346,7 +358,8 @@ class SubjectWindow(QMainWindow):
         gen_layout.addWidget(web_search_frame)
         
         # Pulsante genera
-        generate_btn = QPushButton("✨ Genera Flashcard")
+        generate_btn = QPushButton(" Genera Flashcard")
+        generate_btn.setIcon(IconProvider.get_icon("sparkles", 18, "#FFFFFF"))
         generate_btn.setProperty("class", "primary")
         generate_btn.setFixedHeight(50)
         generate_btn.clicked.connect(self.generate_flashcards)
@@ -372,9 +385,8 @@ class SubjectWindow(QMainWindow):
         layout.setSpacing(12)
         
         # Icona web
-        web_icon = QLabel("🌐")
-        web_icon.setStyleSheet("font-size: 24px;")
-        web_icon.setFixedSize(32, 32)
+        web_icon = QLabel()
+        IconProvider.setup_icon_label(web_icon, "globe", 24, "#3B82F6")
         layout.addWidget(web_icon)
         
         # Testo descrizione
@@ -432,7 +444,8 @@ class SubjectWindow(QMainWindow):
         header_layout.addStretch()
         
         # Pulsante esporta
-        export_btn = QPushButton("📥 Esporta")
+        export_btn = QPushButton(" Esporta")
+        export_btn.setIcon(IconProvider.get_icon("download", 18, "#262626"))
         export_btn.setProperty("class", "secondary")
         export_btn.clicked.connect(self.export_flashcards)
         header_layout.addWidget(export_btn)
@@ -447,12 +460,14 @@ class SubjectWindow(QMainWindow):
         action_layout = QHBoxLayout()
         action_layout.setSpacing(12)
         
-        edit_btn = QPushButton("✏️ Modifica")
+        edit_btn = QPushButton(" Modifica")
+        edit_btn.setIcon(IconProvider.get_icon("edit", 18, "#262626"))
         edit_btn.setProperty("class", "secondary")
         edit_btn.clicked.connect(self.edit_current_flashcard)
         action_layout.addWidget(edit_btn)
         
-        delete_btn = QPushButton("🗑️ Elimina")
+        delete_btn = QPushButton(" Elimina")
+        delete_btn.setIcon(IconProvider.get_icon("trash", 18, "#EF4444"))
         delete_btn.setProperty("class", "secondary")
         delete_btn.clicked.connect(self.delete_current_flashcard)
         action_layout.addWidget(delete_btn)
@@ -465,11 +480,14 @@ class SubjectWindow(QMainWindow):
         
         return widget
     
+
+
     def create_flashcard_display(self):
         """Crea la card per visualizzare la flashcard corrente"""
         card = QFrame()
         card.setProperty("class", "flashcard")
-        card.setFixedSize(600, 350)
+        # Rimuovi setFixedSize(600, 350) per permettere la crescita verticale
+        card.setFixedWidth(600) # Mantieni la larghezza fissa
         card.setCursor(Qt.CursorShape.PointingHandCursor)
         
         # Evento click per girare la carta
@@ -479,14 +497,27 @@ class SubjectWindow(QMainWindow):
         self.flashcard_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.flashcard_layout.setSpacing(20)
         
-        # Contenuto principale
-        self.flashcard_label = QLabel("Nessuna flashcard disponibile")
-        self.flashcard_label.setWordWrap(True)
-        self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Contenuto principale: usa QTextEdit al posto di QLabel
+        self.flashcard_label = QTextEdit("Nessuna flashcard disponibile")
+        self.flashcard_label.setReadOnly(True) # Rendi non modificabile
+        self.flashcard_label.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere) # Abilita word wrap
+        self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter) 
+        self.flashcard_label.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Stile per QTextEdit (deve replicare lo stile del QLabel precedente e rimuovere la cornice di default)
         self.flashcard_label.setStyleSheet("""
-            font-size: 20px; 
-            color: #262626;
+            QTextEdit {
+                font-size: 20px; 
+                color: #262626;
+                background-color: transparent;
+                border: none;
+                padding: 0; 
+                margin: 0;
+            }
         """)
+        # Aggiungi una dimensione minima per un aspetto migliore
+        self.flashcard_label.setMinimumHeight(200)
+
         self.flashcard_layout.addWidget(self.flashcard_label)
         
         # Label difficoltà
@@ -506,21 +537,23 @@ class SubjectWindow(QMainWindow):
         self.flashcard_layout.addWidget(self.hint_label)
         
         return card
-    
+
+
     def create_navigation_controls(self):
         """Crea i controlli di navigazione per le flashcard"""
         nav_layout = QHBoxLayout()
         nav_layout.setSpacing(12)
         
         # Precedente
-        self.prev_btn = QPushButton("◀ Precedente")
+        self.prev_btn = QPushButton(" Precedente")
+        self.prev_btn.setIcon(IconProvider.get_icon("arrow-left", 16, "#262626"))
         self.prev_btn.setProperty("class", "secondary")
         self.prev_btn.setFixedWidth(150)
         self.prev_btn.clicked.connect(self.previous_flashcard)
         nav_layout.addWidget(self.prev_btn)
         
         # Gira carta
-        flip_btn = QPushButton("🔄 Gira Carta")
+        flip_btn = QPushButton("Gira Carta")
         flip_btn.setProperty("class", "secondary")
         flip_btn.setFixedWidth(150)
         flip_btn.clicked.connect(self.flip_card)
@@ -643,7 +676,7 @@ class SubjectWindow(QMainWindow):
         """Aggiorna il contatore dei documenti"""
         documents = self.db.get_documents_by_subject(self.subject_data['id'])
         count = len(documents)
-        self.doc_count_label.setText(f"📄 Documenti disponibili: {count}")
+        self.doc_count_label.setText(f"Documenti disponibili: {count}")
     
     # ==================== GENERAZIONE FLASHCARD ====================
     
@@ -787,16 +820,10 @@ class SubjectWindow(QMainWindow):
                 'medio': '#F59E0B',
                 'difficile': '#EF4444'
             }
-            difficulty_emoji = {
-                'facile': '😊',
-                'medio': '🤔',
-                'difficile': '💪'
-            }
             
             color = difficulty_colors.get(difficulty, '#F59E0B')
-            emoji = difficulty_emoji.get(difficulty, '🤔')
             
-            self.difficulty_label.setText(f"{emoji} {difficulty.capitalize()}")
+            self.difficulty_label.setText(difficulty.capitalize())
             self.difficulty_label.setStyleSheet(f"""
                 font-size: 14px;
                 font-weight: 600;

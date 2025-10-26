@@ -14,25 +14,40 @@ QWidget#header {
     border-bottom: 1px solid #E8E8E8;
 }
 
-/* Cards */
-/* Cards */
-QFrame.card {
+/* Cards - STYLING MIGLIORATO */
+QFrame.card, SubjectCard {
     background-color: white;
     border: 1px solid #E8E8E8;
-    border-radius: 16px;
+    border-radius: 12px;
 }
 
-QFrame.card:hover {
+QFrame.card:hover, SubjectCard:hover {
     border-color: #8B5CF6;
 }
 
-
-QLabel.card_text {
+/* Fix per i QLabel dentro le card */
+SubjectCard QLabel {
     background-color: transparent;
     border: none;
-    padding: 0px;
-    margin: 0px;
 }
+
+QFrame.card QLabel {
+    background-color: transparent;
+    border: none;
+}
+
+/* Flashcard styling */
+QFrame.flashcard {
+    background-color: white;
+    border: 2px solid #E8E8E8;
+    border-radius: 16px;
+    padding: 30px;
+}
+
+QFrame.flashcard:hover {
+    border-color: #8B5CF6;
+}
+
 /* Buttons */
 QPushButton.primary {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -72,6 +87,7 @@ QPushButton.secondary {
 
 QPushButton.secondary:hover {
     background-color: #F5F5F5;
+    border-color: #D4D4D4;
 }
 
 QPushButton.secondary:pressed {
@@ -241,6 +257,36 @@ QComboBox QAbstractItemView {
     padding: 4px;
 }
 
+/* Checkbox */
+QCheckBox {
+    spacing: 8px;
+    font-size: 14px;
+    color: #262626;
+}
+
+QCheckBox::indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid #E8E8E8;
+    background-color: white;
+}
+
+QCheckBox::indicator:hover {
+    border-color: #8B5CF6;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #8B5CF6;
+    border-color: #8B5CF6;
+    image: none;
+}
+
+QCheckBox::indicator:checked:after {
+    content: "✓";
+    color: white;
+}
+
 /* Dialog */
 QDialog {
     background-color: white;
@@ -259,6 +305,21 @@ QMessageBox QPushButton {
 /* Progress Dialog */
 QProgressDialog {
     background-color: white;
+}
+
+QProgressBar {
+    border: none;
+    border-radius: 8px;
+    background-color: #F3F4F6;
+    text-align: center;
+    font-size: 12px;
+    color: #262626;
+}
+
+QProgressBar::chunk {
+    border-radius: 8px;
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                               stop:0 #8B5CF6, stop:1 #3B82F6);
 }
 """
 

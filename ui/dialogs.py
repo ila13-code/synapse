@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 from database.db_manager import DatabaseManager
 from ui.styles import SUBJECT_COLORS
+from ui.icons import IconProvider
 import os
 
 
@@ -241,7 +242,7 @@ class SettingsDialog(QDialog):
     
     def setup_ui(self):
         self.setWindowTitle("Impostazioni")
-        self.setFixedSize(600, 400)
+        self.setFixedSize(600, 520)
         self.setModal(True)
         
         layout = QVBoxLayout(self)
@@ -256,60 +257,72 @@ class SettingsDialog(QDialog):
         
         layout.addStretch()
         
-        # Info footer
-        self.create_info_footer(layout)
-        
         # Action buttons
         self.create_action_buttons(layout)
     
     def create_header(self, parent_layout):
         """Crea l'intestazione del dialog"""
+        header_layout = QHBoxLayout()
+        
+        # Icona
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, 'settings', 32, '#8B5CF6')
+        header_layout.addWidget(icon_label)
+        
+        # Titoli
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        
         title = QLabel("Impostazioni")
         title.setStyleSheet("""
             font-size: 22px; 
             font-weight: 700; 
             color: #171717;
         """)
-        parent_layout.addWidget(title)
+        text_layout.addWidget(title)
         
-        subtitle = QLabel("Configura la tua API key per utilizzare l'intelligenza artificiale")
+        subtitle = QLabel("Configura l'API Key di Google Gemini per abilitare le funzionalità AI")
         subtitle.setStyleSheet("""
             font-size: 13px; 
             color: #737373;
         """)
         subtitle.setWordWrap(True)
-        parent_layout.addWidget(subtitle)
+        text_layout.addWidget(subtitle)
+        
+        header_layout.addLayout(text_layout)
+        parent_layout.addLayout(header_layout)
     
     def create_api_key_section(self, parent_layout):
-        """Crea la sezione per l'API key"""
-        # Label e link
-        label_layout = QHBoxLayout()
-        
-        api_label = QLabel("Gemini API Key *")
+        """Crea la sezione API Key"""
+        # Label
+        api_label = QLabel("Google Gemini API Key *")
         api_label.setStyleSheet("""
             font-size: 14px; 
             font-weight: 600; 
             color: #262626;
         """)
-        label_layout.addWidget(api_label)
-        label_layout.addStretch()
+        parent_layout.addWidget(api_label)
         
-        help_label = QLabel(
-            '<a href="https://aistudio.google.com/app/apikey" '
+        # Link per ottenere API key
+        link_label = QLabel(
+            '<a href="https://makersuite.google.com/app/apikey" '
             'style="color: #8B5CF6; text-decoration: none;">'
-            '🔗 Ottieni la tua API key'
-            '</a>'
+            'Ottieni la tua API key</a>'
         )
-        help_label.setStyleSheet("font-size: 13px;")
-        help_label.setOpenExternalLinks(True)
-        label_layout.addWidget(help_label)
+        link_label.setOpenExternalLinks(True)
+        link_label.setStyleSheet("""
+            font-size: 13px;
+            padding: 4px 0;
+        """)
+        parent_layout.addWidget(link_label)
         
-        parent_layout.addLayout(label_layout)
+        # Input container con pulsante mostra/nascondi
+        input_layout = QHBoxLayout()
+        input_layout.setSpacing(8)
         
-        # Input field
         self.api_input = QLineEdit()
-        self.api_input.setPlaceholderText("Inserisci la tua Gemini API key...")
         self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.api_input.setPlaceholderText("Inserisci la tua API key...")
         self.api_input.setMinimumHeight(44)
         self.api_input.setStyleSheet("""
             QLineEdit {
@@ -317,43 +330,39 @@ class SettingsDialog(QDialog):
                 border: 2px solid #E5E5E5;
                 border-radius: 8px;
                 font-size: 14px;
-                font-family: monospace;
             }
             QLineEdit:focus {
                 border-color: #8B5CF6;
             }
         """)
-        parent_layout.addWidget(self.api_input)
+        input_layout.addWidget(self.api_input)
         
-        # Toggle visibility button
-        show_layout = QHBoxLayout()
-        
-        self.show_btn = QPushButton("👁️ Mostra API Key")
+        # Pulsante mostra/nascondi
+        self.show_btn = QPushButton(" Mostra")
+        self.show_btn.setIcon(IconProvider.get_icon('key', 16, '#262626'))
         self.show_btn.setProperty("class", "secondary")
-        self.show_btn.setFixedHeight(36)
-        self.show_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.show_btn.clicked.connect(self.toggle_password_visibility)
-        show_layout.addWidget(self.show_btn)
-        show_layout.addStretch()
+        self.show_btn.setFixedWidth(100)
+        self.show_btn.setMinimumHeight(44)
+        self.show_btn.clicked.connect(self.toggle_api_visibility)
+        input_layout.addWidget(self.show_btn)
         
-        parent_layout.addLayout(show_layout)
-    
-    def create_info_footer(self, parent_layout):
-        """Crea il footer informativo"""
-        info_text = (
-            "💡 <b>Nota sulla sicurezza:</b> La tua API key viene salvata localmente "
-            "e non viene mai condivisa. Mantienila privata e non condividerla con nessuno."
+        parent_layout.addLayout(input_layout)
+        
+        # Nota informativa
+        info_label = QLabel(
+            "<b>Nota sulla sicurezza:</b> La tua API key viene salvata localmente "
+            "sul tuo computer e non viene mai inviata a server esterni. "
+            "Viene utilizzata solo per comunicare direttamente con Google Gemini."
         )
-        
-        info_label = QLabel(info_text)
         info_label.setWordWrap(True)
         info_label.setStyleSheet("""
             QLabel {
-                background-color: #FEF3C7;
-                color: #92400E;
-                padding: 12px;
+                background-color: #F3F4F6;
+                border-left: 4px solid #8B5CF6;
                 border-radius: 8px;
+                padding: 12px 16px;
                 font-size: 12px;
+                color: #525252;
             }
         """)
         parent_layout.addWidget(info_label)
@@ -371,8 +380,9 @@ class SettingsDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
         
-        # Salva
-        save_btn = QPushButton("💾 Salva Impostazioni")
+        # Salva con icona
+        save_btn = QPushButton(" Salva Impostazioni")
+        save_btn.setIcon(IconProvider.get_icon('save', 18, '#FFFFFF'))
         save_btn.setProperty("class", "primary")
         save_btn.setMinimumHeight(44)
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -381,33 +391,34 @@ class SettingsDialog(QDialog):
         
         parent_layout.addLayout(button_layout)
     
-    def toggle_password_visibility(self):
-        """Mostra/nasconde l'API key"""
+    def toggle_api_visibility(self):
+        """Toggle della visibilità dell'API key"""
         if self.api_input.echoMode() == QLineEdit.EchoMode.Password:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.show_btn.setText("🔒 Nascondi API Key")
+            self.show_btn.setText(" Nascondi")
         else:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.show_btn.setText("👁️ Mostra API Key")
+            self.show_btn.setText(" Mostra")
     
     def load_settings(self):
         """Carica le impostazioni salvate"""
-        # Prova prima dal file .env
-        try:
-            if os.path.exists('.env'):
-                with open('.env', 'r') as f:
-                    for line in f:
+        # Cerca prima nell'ambiente
+        api_key = os.environ.get('GEMINI_API_KEY', '')
+        
+        # Se non c'è, prova a leggere da .env
+        if not api_key:
+            try:
+                with open('.env', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    for line in content.split('\n'):
                         if line.startswith('GEMINI_API_KEY='):
                             api_key = line.split('=', 1)[1].strip()
-                            self.api_input.setText(api_key)
-                            os.environ['GEMINI_API_KEY'] = api_key
-                            return
-        except Exception as e:
-            print(f"Warning: Could not load from .env file: {e}")
+                            break
+            except FileNotFoundError:
+                pass
         
-        # Altrimenti usa la variabile d'ambiente
-        api_key = os.environ.get('GEMINI_API_KEY', '')
-        self.api_input.setText(api_key)
+        if api_key:
+            self.api_input.setText(api_key)
     
     def save_settings(self):
         """Salva le impostazioni"""
@@ -417,23 +428,19 @@ class SettingsDialog(QDialog):
             QMessageBox.warning(
                 self, 
                 "Campo Obbligatorio", 
-                "L'API key è obbligatoria per utilizzare le funzioni AI"
+                "L'API key di Google Gemini è obbligatoria per utilizzare le funzionalità AI"
             )
             return
         
-        # Validazione base dell'API key (Gemini keys iniziano con "AI")
-        if not api_key.startswith('AI'):
-            reply = QMessageBox.question(
-                self,
-                "API Key Insolita",
-                "L'API key inserita non sembra una chiave Gemini valida.\n"
-                "Le API key di Gemini iniziano tipicamente con 'AI'.\n\n"
-                "Vuoi salvarla comunque?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        # Validazione base dell'API key (lunghezza minima)
+        if len(api_key) < 20:
+            QMessageBox.warning(
+                self, 
+                "API Key Non Valida", 
+                "L'API key inserita sembra non essere valida. "
+                "Assicurati di aver copiato correttamente l'intera chiave da Google AI Studio."
             )
-            
-            if reply != QMessageBox.StandardButton.Yes:
-                return
+            return
         
         # Salva nell'ambiente
         os.environ['GEMINI_API_KEY'] = api_key
@@ -453,7 +460,7 @@ class SettingsDialog(QDialog):
         QMessageBox.information(
             self, 
             "Successo", 
-            "✅ Impostazioni salvate con successo!\n\n"
+            "Impostazioni salvate con successo!\n\n"
             "Ora puoi utilizzare tutte le funzioni AI."
         )
         self.accept()
@@ -490,20 +497,34 @@ class EditFlashcardDialog(QDialog):
     
     def create_header(self, parent_layout):
         """Crea l'intestazione del dialog"""
+        header_layout = QHBoxLayout()
+        
+        # Icona
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, 'edit', 28, '#8B5CF6')
+        header_layout.addWidget(icon_label)
+        
+        # Titoli
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        
         title = QLabel("Modifica Flashcard")
         title.setStyleSheet("""
             font-size: 22px; 
             font-weight: 700; 
             color: #171717;
         """)
-        parent_layout.addWidget(title)
+        text_layout.addWidget(title)
         
         subtitle = QLabel("Modifica il contenuto e la difficoltà della flashcard")
         subtitle.setStyleSheet("""
             font-size: 13px; 
             color: #737373;
         """)
-        parent_layout.addWidget(subtitle)
+        text_layout.addWidget(subtitle)
+        
+        header_layout.addLayout(text_layout)
+        parent_layout.addLayout(header_layout)
     
     def create_form_fields(self, parent_layout):
         """Crea i campi del form"""
@@ -621,8 +642,9 @@ class EditFlashcardDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
         
-        # Salva
-        save_btn = QPushButton("💾 Salva Modifiche")
+        # Salva con icona
+        save_btn = QPushButton(" Salva Modifiche")
+        save_btn.setIcon(IconProvider.get_icon('save', 18, '#FFFFFF'))
         save_btn.setProperty("class", "primary")
         save_btn.setMinimumHeight(44)
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -665,7 +687,7 @@ class EditFlashcardDialog(QDialog):
             QMessageBox.information(
                 self, 
                 "Successo", 
-                "✅ Flashcard aggiornata con successo!"
+                "Flashcard aggiornata con successo!"
             )
             self.accept()
             

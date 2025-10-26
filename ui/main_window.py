@@ -6,6 +6,7 @@ from database.db_manager import DatabaseManager
 from ui.styles import MAIN_STYLE
 from ui.dialogs import CreateSubjectDialog, SettingsDialog
 from ui.subject_window import SubjectWindow
+from ui.icons import IconProvider
 
 class SubjectCard(QFrame):
     """Widget per visualizzare una card materia"""
@@ -21,60 +22,72 @@ class SubjectCard(QFrame):
         self.setFixedSize(280, 200)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
+        # Styling pulito e professionale per le card
         self.setStyleSheet(f"""
-            QFrame {{
-                background-color: white; /* Sfondo sempre bianco */
+            SubjectCard {{
+                background-color: white;
                 border: 1px solid #E8E8E8;
-                border-left: 6px solid {accent_color}; /* Accentazione del colore */
-                border-radius: 16px;
+                border-left: 4px solid {accent_color};
+                border-radius: 12px;
             }}
-            QFrame:hover {{
-                border-color: {accent_color}; 
-                border-left: 6px solid {accent_color}; 
-                background-color: white; 
-            }}
-            
-            /* NUOVO: Rimuove i bordi e background bianchi dai QLabel interni */
-            QLabel.card_text {{
-                background-color: transparent;
-                border: none;
-                padding: 0px;
-                margin: 0px;
+            SubjectCard:hover {{
+                border: 1px solid {accent_color};
+                border-left: 4px solid {accent_color};
+                background-color: #FAFAFA;
             }}
         """)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
+        layout.setSpacing(12)
 
-        icon_label = QLabel("📚")
-        icon_label.setStyleSheet(f"font-size: 28px; color: {accent_color};")
+        # Icona del libro con colore della materia
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, 'book', 32, accent_color)
         layout.addWidget(icon_label)
         
-
         layout.addStretch()
         
-
+        # Nome materia
         name_label = QLabel(self.subject_data['name'])
         name_label.setWordWrap(True)
-        name_label.setProperty("class", "card_text") 
-        name_label.setStyleSheet("font-size: 18px; font-weight: 700; color: #171717;")
+        name_label.setStyleSheet("""
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #171717;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+        """)
         layout.addWidget(name_label)
         
-
+        # Descrizione (se presente)
         if self.subject_data.get('description'):
             desc_label = QLabel(self.subject_data['description'])
             desc_label.setWordWrap(True)
-            desc_label.setProperty("class", "card_text") 
-            desc_label.setStyleSheet("font-size: 13px; color: #525252;")
+            desc_label.setStyleSheet("""
+                font-size: 13px; 
+                color: #525252;
+                background: transparent;
+                border: none;
+                padding: 0;
+                margin: 0;
+            """)
             layout.addWidget(desc_label)
+        else:
+            layout.addSpacing(18)
         
-        if not self.subject_data.get('description'):
-             layout.addSpacing(18) 
-        
+        # Data creazione
         date_label = QLabel(f"Creata il {self.subject_data['created_at'][:10]}")
-        date_label.setProperty("class", "card_text")
-        date_label.setStyleSheet("font-size: 11px; color: #A3A3A3;")
+        date_label.setStyleSheet("""
+            font-size: 11px; 
+            color: #A3A3A3;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+        """)
         layout.addWidget(date_label)
         
     def mousePressEvent(self, event):
@@ -85,6 +98,8 @@ class SubjectCard(QFrame):
         """Apre la finestra della materia"""
         self.subject_window = SubjectWindow(self.subject_data, self.parent_window)
         self.subject_window.show()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -106,11 +121,11 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-
+        # Header
         header = self.create_header()
         main_layout.addWidget(header)
         
-
+        # Content
         content = self.create_content()
         main_layout.addWidget(content)
         
@@ -124,11 +139,14 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(30, 15, 30, 15)
         
         title_layout = QHBoxLayout()
+        title_layout.setSpacing(12)
         
-        logo_label = QLabel("🧠")
-        logo_label.setStyleSheet("font-size: 28px;")
+        # Logo con icona brain
+        logo_label = QLabel()
+        IconProvider.setup_icon_label(logo_label, 'brain', 28, '#8B5CF6')
         title_layout.addWidget(logo_label)
         
+        # Titolo
         title_label = QLabel("Synapse")
         title_label.setStyleSheet("""
             font-size: 24px;
@@ -140,12 +158,15 @@ class MainWindow(QMainWindow):
         layout.addLayout(title_layout)
         layout.addStretch()
         
-        settings_btn = QPushButton("⚙️ Impostazioni")
+        # Bottone impostazioni con icona
+        settings_btn = QPushButton(" Impostazioni")
+        settings_btn.setIcon(IconProvider.get_icon('settings', 18, '#262626'))
         settings_btn.setProperty("class", "secondary")
         settings_btn.clicked.connect(self.show_settings)
         layout.addWidget(settings_btn)
         
         return header
+    
     def create_content(self):
         """Crea il contenuto principale con le card delle materie"""
         content = QWidget()
@@ -153,6 +174,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(30)
         
+        # Header sezione
         header_layout = QVBoxLayout()
         header_layout.setSpacing(8)
         
@@ -166,10 +188,10 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(header_layout)
 
+        # Scroll area per le card
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-
 
         scroll_content = QWidget()
         
@@ -181,8 +203,9 @@ class MainWindow(QMainWindow):
         self.grid_layout.setSpacing(24)
         self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft) 
         
-        centering_layout.addWidget(grid_wrapper, alignment=Qt.AlignmentFlag.AlignCenter) # Centra orizzontalmente
+        centering_layout.addWidget(grid_wrapper, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        # Card "Nuova Materia"
         create_card = self.create_new_subject_card()
         self.grid_layout.addWidget(create_card, 0, 0)
         
@@ -200,13 +223,12 @@ class MainWindow(QMainWindow):
         card.setStyleSheet("""
             QFrame {
                 background-color: white;
-                border: none; /* NESSUN BORDO */
-                border-radius: 16px;
+                border: 2px dashed #E8E8E8;
+                border-radius: 12px;
             }
             QFrame:hover {
-                /* Hover pulito con solo leggero cambio di sfondo */
-                background-color: #F8F8F8;
-                border: none;
+                background-color: #FAFAFA;
+                border: 2px dashed #8B5CF6;
             }
         """)
         
@@ -214,19 +236,31 @@ class MainWindow(QMainWindow):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(16)
         
-
-        icon_label = QLabel("➕")
-        icon_label.setStyleSheet("font-size: 48px;")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Icona plus
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, 'plus', 48, '#8B5CF6')
         layout.addWidget(icon_label)
         
+        # Testo principale
         text_label = QLabel("Nuova Materia")
-        text_label.setStyleSheet("font-size: 16px; font-weight: 600; color: #262626;")
+        text_label.setStyleSheet("""
+            font-size: 16px; 
+            font-weight: 600; 
+            color: #262626;
+            background: transparent;
+            border: none;
+        """)
         text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(text_label)
         
+        # Descrizione
         desc_label = QLabel("Crea una nuova cartella di studio")
-        desc_label.setStyleSheet("font-size: 13px; color: #737373;")
+        desc_label.setStyleSheet("""
+            font-size: 13px; 
+            color: #737373;
+            background: transparent;
+            border: none;
+        """)
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc_label)
         
@@ -235,9 +269,10 @@ class MainWindow(QMainWindow):
         return card
     
     def load_subjects(self):
-        """Carica e visualizza tutte le materie, mantenendo la card 'Nuova Materia' in posizione (0,0)"""
+        """Carica e visualizza tutte le materie"""
         subjects = self.db.get_all_subjects()
 
+        # Rimuovi tutte le card tranne quella "Nuova Materia" in posizione (0,0)
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
             position = self.grid_layout.getItemPosition(i)
@@ -249,10 +284,10 @@ class MainWindow(QMainWindow):
                 self.grid_layout.removeItem(item)
                 if item.widget():
                     item.widget().deleteLater()
-                elif item.spacerItem():
-                    pass
+        
         COLUMNS = 4
         
+        # Aggiungi le card delle materie
         for idx, subject in enumerate(subjects):
             card = SubjectCard(subject, self)
 
@@ -263,7 +298,6 @@ class MainWindow(QMainWindow):
             self.grid_layout.addWidget(card, row, col)
         
         self.grid_layout.setColumnStretch(COLUMNS, 1)
-
         self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
     
     def create_subject(self):
