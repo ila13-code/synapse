@@ -140,8 +140,8 @@ class SubjectWindow(QMainWindow):
         upload_card = QFrame()
         upload_card.setStyleSheet("""
             QFrame {
-                background-color: white;
-                border: 2px dashed #E8E8E8;
+                background-color: #FAFAFA; /* Sfondo molto leggero per distinguerlo */
+                border: 1px solid #D4D4D4; /* Bordo continuo e pulito */
                 border-radius: 16px;
             }
         """)
@@ -645,6 +645,7 @@ class SubjectWindow(QMainWindow):
         self.is_flipped = False
         self.update_flashcard_display()
     
+
     def update_flashcard_display(self):
         """Aggiorna la visualizzazione della flashcard corrente"""
         if not self.flashcards:
@@ -654,6 +655,8 @@ class SubjectWindow(QMainWindow):
             self.hint_label.hide()
             self.prev_btn.setEnabled(False)
             self.next_btn.setEnabled(False)
+            # Ripristina stile base (usa lo stile QFrame.card generale)
+            self.flashcard_card.setStyleSheet("")
             return
         
         card = self.flashcards[self.current_flashcard_index]
@@ -663,6 +666,9 @@ class SubjectWindow(QMainWindow):
             f"Flashcard {self.current_flashcard_index + 1} di {len(self.flashcards)}"
         )
         
+        # Reset dello stile della card (usa lo stile QFrame.card generale)
+        self.flashcard_card.setStyleSheet("")
+        
         # Mostra fronte o retro
         if self.is_flipped:
             self.flashcard_label.setText(card['back'])
@@ -671,14 +677,27 @@ class SubjectWindow(QMainWindow):
             # Mostra difficoltà
             diff = card.get('difficulty', 'medium')
             diff_text = {'easy': 'Facile', 'medium': 'Medio', 'hard': 'Difficile'}
-            diff_colors = {'easy': '#10B981', 'medium': '#F59E0B', 'hard': '#EF4444'}
+            # Assicurati che DIFFICULTY_COLORS sia importato correttamente
+            diff_color = DIFFICULTY_COLORS.get(diff, '#8B5CF6') 
+            
+            # NUOVO: Applica lo stile colorato alla card GIRATA
+            self.flashcard_card.setStyleSheet(f"""
+                QFrame.card {{
+                    background-color: {diff_color}10; /* Sfondo leggerissimo */
+                    border: 2px solid {diff_color}; /* Bordo con colore difficoltà */
+                    border-radius: 16px;
+                }}
+                QFrame.card:hover {{
+                    border-color: {diff_color};
+                }}
+            """)
             
             self.difficulty_label.setText(diff_text[diff])
             self.difficulty_label.setStyleSheet(f"""
                 font-size: 12px;
                 font-weight: 600;
-                color: {diff_colors[diff]};
-                background-color: {diff_colors[diff]}20;
+                color: {diff_color};
+                background-color: {diff_color}20; /* Sfondo leggero per la label */
                 padding: 6px 12px;
                 border-radius: 6px;
                 margin-top: 16px;
@@ -692,7 +711,69 @@ class SubjectWindow(QMainWindow):
         # Abilita/disabilita pulsanti navigazione
         self.prev_btn.setEnabled(self.current_flashcard_index > 0)
         self.next_btn.setEnabled(self.current_flashcard_index < len(self.flashcards) - 1)
-    
+        """Aggiorna la visualizzazione della flashcard corrente"""
+        if not self.flashcards:
+            self.flashcard_label.setText("Nessuna flashcard disponibile\n\nVai nella sezione 'Genera' per creare flashcard")
+            self.flashcard_count_label.setText("Flashcard 0 di 0")
+            self.difficulty_label.hide()
+            self.hint_label.hide()
+            self.prev_btn.setEnabled(False)
+            self.next_btn.setEnabled(False)
+            # Ripristina stile base
+            self.flashcard_card.setStyleSheet("")
+            return
+        
+        card = self.flashcards[self.current_flashcard_index]
+        
+        # Aggiorna contatore
+        self.flashcard_count_label.setText(
+            f"Flashcard {self.current_flashcard_index + 1} di {len(self.flashcards)}"
+        )
+        
+        # Reset dello stile della card (usa lo stile generico QFrame.card di default)
+        self.flashcard_card.setStyleSheet("")
+        
+        # Mostra fronte o retro
+        if self.is_flipped:
+            self.flashcard_label.setText(card['back'])
+            self.hint_label.setText("")
+            
+            # Mostra difficoltà
+            diff = card.get('difficulty', 'medium')
+            diff_text = {'easy': 'Facile', 'medium': 'Medio', 'hard': 'Difficile'}
+            diff_color = DIFFICULTY_COLORS.get(diff, '#8B5CF6') # Colore in base alla difficoltà
+            
+            # NUOVO: Applica lo stile colorato alla card
+            self.flashcard_card.setStyleSheet(f"""
+                QFrame.card {{
+                    background-color: {diff_color}10; /* Sfondo molto leggero */
+                    border: 2px solid {diff_color}; /* Bordo con colore difficoltà */
+                    border-radius: 16px;
+                }}
+                QFrame.card:hover {{
+                    border-color: {diff_color};
+                }}
+            """)
+            
+            self.difficulty_label.setText(diff_text[diff])
+            self.difficulty_label.setStyleSheet(f"""
+                font-size: 12px;
+                font-weight: 600;
+                color: {diff_color};
+                background-color: {diff_color}20;
+                padding: 6px 12px;
+                border-radius: 6px;
+                margin-top: 16px;
+            """)
+            self.difficulty_label.show()
+        else:
+            self.flashcard_label.setText(card['front'])
+            self.hint_label.setText("Clicca per vedere la risposta")
+            self.difficulty_label.hide()
+        
+        # Abilita/disabilita pulsanti navigazione
+        self.prev_btn.setEnabled(self.current_flashcard_index > 0)
+        self.next_btn.setEnabled(self.current_flashcard_index < len(self.flashcards) - 1)
     def flip_card(self):
         """Gira la flashcard"""
         if not self.flashcards:

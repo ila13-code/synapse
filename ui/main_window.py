@@ -17,41 +17,68 @@ class SubjectCard(QFrame):
         self.setup_ui()
         
     def setup_ui(self):
-        self.setProperty("class", "card")
+        accent_color = self.subject_data['color']
         self.setFixedSize(280, 200)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         
+        # Stile: Bordo sinistro colorato, background bianco.
+        # Nessun background o bordo in hover (tranne l'accento) per pulizia.
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: white; /* Sfondo sempre bianco */
+                border: 1px solid #E8E8E8;
+                border-left: 6px solid {accent_color}; /* Accentazione del colore */
+                border-radius: 16px;
+            }}
+            QFrame:hover {{
+                border-color: {accent_color}; 
+                border-left: 6px solid {accent_color}; 
+                background-color: white; 
+            }}
+            
+            /* NUOVO: Rimuove i bordi e background bianchi dai QLabel interni */
+            QLabel.card_text {{
+                background-color: transparent;
+                border: none;
+                padding: 0px;
+                margin: 0px;
+            }}
+        """)
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setSpacing(8) # Ridotto lo spacing per un layout più compatto
         
-        # Color indicator
-        color_frame = QFrame()
-        color_frame.setFixedSize(48, 48)
-        color_frame.setStyleSheet(f"""
-            background-color: {self.subject_data['color']}20;
-            border-radius: 12px;
-        """)
-        layout.addWidget(color_frame)
+        # Icona Materia
+        icon_label = QLabel("📚")
+        icon_label.setStyleSheet(f"font-size: 28px; color: {accent_color};")
+        layout.addWidget(icon_label)
         
         # Spacer
         layout.addStretch()
         
-        # Nome materia
+        # Nome materia (Label pulita)
         name_label = QLabel(self.subject_data['name'])
         name_label.setWordWrap(True)
-        name_label.setStyleSheet("font-size: 18px; font-weight: 600; color: #171717;")
+        name_label.setProperty("class", "card_text") # Aggiunge la classe per lo stile pulito
+        name_label.setStyleSheet("font-size: 18px; font-weight: 700; color: #171717;")
         layout.addWidget(name_label)
         
-        # Descrizione
+        # Descrizione (Label pulita)
         if self.subject_data.get('description'):
             desc_label = QLabel(self.subject_data['description'])
             desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("font-size: 13px; color: #737373;")
+            desc_label.setProperty("class", "card_text") # Aggiunge la classe per lo stile pulito
+            desc_label.setStyleSheet("font-size: 13px; color: #525252;")
             layout.addWidget(desc_label)
         
-        # Data creazione
+        # Spazio aggiuntivo se non c'è descrizione
+        if not self.subject_data.get('description'):
+             layout.addSpacing(18) # Aggiungi spazio per bilanciare il layout
+        
+        # Data creazione (Label pulita)
         date_label = QLabel(f"Creata il {self.subject_data['created_at'][:10]}")
+        date_label.setProperty("class", "card_text") # Aggiunge la classe per lo stile pulito
         date_label.setStyleSheet("font-size: 11px; color: #A3A3A3;")
         layout.addWidget(date_label)
         
@@ -63,8 +90,6 @@ class SubjectCard(QFrame):
         """Apre la finestra della materia"""
         self.subject_window = SubjectWindow(self.subject_data, self.parent_window)
         self.subject_window.show()
-
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -175,17 +200,17 @@ class MainWindow(QMainWindow):
         card = QFrame()
         card.setFixedSize(280, 200)
         card.setCursor(Qt.CursorShape.PointingHandCursor)
+        
         card.setStyleSheet("""
             QFrame {
                 background-color: white;
-                border: 2px dashed #E8E8E8;
+                border: 1px solid #E8E8E8; /* Bordo continuo e sottile */
                 border-radius: 16px;
             }
             QFrame:hover {
-                border-color: #8B5CF6;
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                                          stop:0 rgba(139, 92, 246, 0.05),
-                                          stop:1 rgba(59, 130, 246, 0.05));
+                border: 1px solid #8B5CF6; /* Bordo primario in hover */
+                /* Rimuoviamo il gradiente per evitare effetti sporchi */
+                background-color: #F8F8F8; /* Sfondo leggerissimo in hover */
             }
         """)
         

@@ -15,6 +15,7 @@ QWidget#header {
 }
 
 /* Cards */
+/* Cards */
 QFrame.card {
     background-color: white;
     border: 1px solid #E8E8E8;
@@ -25,6 +26,13 @@ QFrame.card:hover {
     border-color: #8B5CF6;
 }
 
+
+QLabel.card_text {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+    margin: 0px;
+}
 /* Buttons */
 QPushButton.primary {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
