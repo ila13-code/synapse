@@ -6,7 +6,6 @@ class AIService:
     def __init__(self, api_key: str):
         """Inizializza il servizio AI con Gemini"""
         genai.configure(api_key=api_key)
-        # Usa il modello base - la ricerca web la gestiamo nel prompt
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
     def generate_flashcards(self, content: str, num_cards: int = 10, use_web_search: bool = False) -> List[Dict]:

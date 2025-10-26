@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QScrollArea, QFrame, QGridLayout, QMessageBox,
                              QProgressDialog, QCheckBox)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QColor
 from database.db_manager import DatabaseManager
 from services.file_service import FileService
 from services.ai_service import AIService
@@ -34,6 +34,8 @@ class GenerationThread(QThread):
             self.finished.emit(flashcards)
         except Exception as e:
             self.error.emit(str(e))
+
+
 class SubjectWindow(QMainWindow):
     def __init__(self, subject_data, parent=None):
         super().__init__(parent)
@@ -45,177 +47,226 @@ class SubjectWindow(QMainWindow):
         self.flashcards = []
         self.setup_ui()
         self.load_data()
+    
+    def get_color_with_opacity(self, hex_color, opacity=0.2):
+        """Converte un colore hex in rgba con opacità specificata"""
+        color = QColor(hex_color)
+        return f"rgba({color.red()}, {color.green()}, {color.blue()}, {opacity})"
         
     def setup_ui(self):
         self.setWindowTitle(f"Synapse - {self.subject_data['name']}")
         self.setMinimumSize(1200, 800)
         self.setStyleSheet(MAIN_STYLE)
         
-        # Widget centrale
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-        
-        # Header
+ 
         header = self.create_header()
         main_layout.addWidget(header)
         
-        # Tab widget
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
         
-        # Tab Documenti
+        # Tabs
         self.documents_tab = self.create_documents_tab()
         self.tabs.addTab(self.documents_tab, "📄 Documenti")
         
-        # Tab Genera
         self.generate_tab = self.create_generate_tab()
         self.tabs.addTab(self.generate_tab, "✨ Genera")
         
-        # Tab Flashcard
         self.flashcards_tab = self.create_flashcards_tab()
         self.tabs.addTab(self.flashcards_tab, "📚 Flashcard")
         
         main_layout.addWidget(self.tabs)
-        
+    
     def create_header(self):
-        """Crea l'header della finestra"""
+        """Crea l'header della finestra con informazioni sulla materia"""
         header = QWidget()
-        header.setStyleSheet("background-color: white; border-bottom: 1px solid #E8E8E8;")
+        header.setStyleSheet("""
+            background-color: white; 
+            border-bottom: 1px solid #E8E8E8;
+        """)
         header.setFixedHeight(80)
         
         layout = QHBoxLayout(header)
         layout.setContentsMargins(30, 15, 30, 15)
-        
-        # Pulsante indietro
+
         back_btn = QPushButton("← Indietro")
         back_btn.setProperty("class", "secondary")
         back_btn.clicked.connect(self.close)
         layout.addWidget(back_btn)
-        
-        # Info materia
+
         info_layout = QHBoxLayout()
         info_layout.setSpacing(12)
         
-        # Color indicator
-        color_frame = QFrame()
-        color_frame.setFixedSize(40, 40)
-        color_frame.setStyleSheet(f"""
-            background-color: {self.subject_data['color']}30;
+        # Indicatore colore con opacità corretta
+        color_indicator = QFrame()
+        color_indicator.setFixedSize(40, 40)
+        bg_color = self.get_color_with_opacity(self.subject_data['color'], 0.2)
+        color_indicator.setStyleSheet(f"""
+            background-color: {bg_color};
             border-radius: 10px;
         """)
-        info_layout.addWidget(color_frame)
+        info_layout.addWidget(color_indicator)
         
         # Nome e descrizione
         text_layout = QVBoxLayout()
         text_layout.setSpacing(2)
         
         name_label = QLabel(self.subject_data['name'])
-        name_label.setStyleSheet("font-size: 18px; font-weight: 700; color: #171717;")
+        name_label.setStyleSheet("""
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #171717;
+        """)
         text_layout.addWidget(name_label)
         
         if self.subject_data.get('description'):
             desc_label = QLabel(self.subject_data['description'])
-            desc_label.setStyleSheet("font-size: 13px; color: #737373;")
+            desc_label.setStyleSheet("""
+                font-size: 13px; 
+                color: #737373;
+            """)
             text_layout.addWidget(desc_label)
         
         info_layout.addLayout(text_layout)
-        
         layout.addLayout(info_layout)
         layout.addStretch()
         
         return header
     
     def create_documents_tab(self):
-        """Tab per gestire i documenti"""
+        """Tab per gestire i documenti della materia"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(20)
+        layout.setSpacing(24)
         
-        # Card upload
-        upload_card = QFrame()
-        upload_card.setStyleSheet("""
-            QFrame {
-                background-color: white; /* Sfondo bianco */
-                border: none; /* NESSUN BORDO */
-                border-radius: 16px;
-            }
-        """)
-        upload_card.setFixedHeight(200)
-        
-        upload_layout = QVBoxLayout(upload_card)
-        upload_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        upload_layout.setSpacing(16)
-        
-        icon_label = QLabel("📤")
-        icon_label.setStyleSheet("font-size: 48px;")
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        upload_layout.addWidget(icon_label)
-        
-        title_label = QLabel("Carica Documenti")
-        title_label.setStyleSheet("font-size: 18px; font-weight: 600; color: #262626;")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        upload_layout.addWidget(title_label)
-        
-        desc_label = QLabel("Supporta file TXT e PDF (max 10MB)")
-        desc_label.setStyleSheet("font-size: 13px; color: #737373;")
-        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        upload_layout.addWidget(desc_label)
-        
-        upload_btn = QPushButton("Seleziona File")
-        upload_btn.setProperty("class", "primary")
-        upload_btn.clicked.connect(self.upload_document)
-        upload_layout.addWidget(upload_btn, alignment=Qt.AlignmentFlag.AlignCenter)
-        
+        # Card per upload documenti
+        upload_card = self.create_upload_card()
         layout.addWidget(upload_card)
         
-        # Lista documenti
-        self.docs_header = QLabel(f"Documenti Caricati (0)")
-        self.docs_header.setStyleSheet("font-size: 16px; font-weight: 600; color: #171717;")
+        # Header documenti
+        self.docs_header = QLabel("Documenti Caricati (0)")
+        self.docs_header.setStyleSheet("""
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #171717;
+        """)
         layout.addWidget(self.docs_header)
         
-        self.docs_scroll = QScrollArea()
-        self.docs_scroll.setWidgetResizable(True)
-        self.docs_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        # ScrollArea per documenti
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         
-        self.docs_container = QWidget()
-        self.docs_layout = QVBoxLayout(self.docs_container)
+        scroll_content = QWidget()
+        self.docs_layout = QVBoxLayout(scroll_content)
         self.docs_layout.setSpacing(12)
         self.docs_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         
-        self.docs_scroll.setWidget(self.docs_container)
-        layout.addWidget(self.docs_scroll)
+        scroll.setWidget(scroll_content)
+        layout.addWidget(scroll)
         
         return widget
     
-    def create_document_card(self, doc):
-        """Crea una card per un documento"""
+    def create_upload_card(self):
+        """Crea la card per l'upload dei documenti"""
         card = QFrame()
-        card.setProperty("class", "card")
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: none;
+                border-radius: 16px;
+            }
+        """)
+        card.setFixedHeight(180)
+        
+        layout = QVBoxLayout(card)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(16)
+        
+        # Icona
+        icon_label = QLabel("📤")
+        icon_label.setStyleSheet("font-size: 48px;")
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_label)
+        
+        # Titolo
+        title_label = QLabel("Carica Documenti")
+        title_label.setStyleSheet("""
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #171717;
+        """)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
+        
+        # Descrizione
+        desc_label = QLabel("Carica file PDF o TXT per creare flashcard")
+        desc_label.setStyleSheet("""
+            font-size: 13px; 
+            color: #737373;
+        """)
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(desc_label)
+        
+        # Pulsante upload
+        upload_btn = QPushButton("Seleziona File")
+        upload_btn.setProperty("class", "primary")
+        upload_btn.clicked.connect(self.upload_document)
+        layout.addWidget(upload_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        return card
+    
+    def create_document_card(self, doc):
+        """Crea una card per visualizzare un documento"""
+        card = QFrame()
+        card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: none;
+                border-radius: 12px;
+            }
+            QFrame:hover {
+                background-color: #FAFAFA;
+            }
+        """)
+        card.setFixedHeight(80)
         
         layout = QHBoxLayout(card)
         layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(16)
         
-        # Icona
+        # Icona documento
         icon_label = QLabel("📄")
         icon_label.setStyleSheet("font-size: 32px;")
         layout.addWidget(icon_label)
         
-        # Info
+        # Info documento
         info_layout = QVBoxLayout()
         info_layout.setSpacing(4)
         
         name_label = QLabel(doc['name'])
-        name_label.setStyleSheet("font-size: 14px; font-weight: 600; color: #171717;")
+        name_label.setStyleSheet("""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #171717;
+        """)
         info_layout.addWidget(name_label)
         
-        size_date = f"{self.file_service.format_file_size(doc['size_bytes'] or 0)} • {doc['created_at'][:10]}"
-        meta_label = QLabel(size_date)
-        meta_label.setStyleSheet("font-size: 12px; color: #737373;")
+        # Metadati (dimensione e data)
+        size_text = self.file_service.format_file_size(doc['size_bytes'] or 0)
+        date_text = doc['created_at'][:10]
+        meta_label = QLabel(f"{size_text} • {date_text}")
+        meta_label.setStyleSheet("""
+            font-size: 12px; 
+            color: #737373;
+        """)
         info_layout.addWidget(meta_label)
         
         layout.addLayout(info_layout)
@@ -224,20 +275,21 @@ class SubjectWindow(QMainWindow):
         # Pulsante elimina
         delete_btn = QPushButton("🗑️")
         delete_btn.setProperty("class", "icon-button")
+        delete_btn.setFixedSize(36, 36)
         delete_btn.clicked.connect(lambda: self.delete_document(doc['id']))
         layout.addWidget(delete_btn)
         
         return card
     
     def create_generate_tab(self):
-        """Tab per generare flashcard"""
+        """Tab per generare flashcard con AI"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(30)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(32)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         
-        # Card generazione
+        # Card principale generazione
         gen_card = QFrame()
         gen_card.setProperty("class", "card")
         gen_card.setFixedWidth(650)
@@ -246,7 +298,7 @@ class SubjectWindow(QMainWindow):
         gen_layout.setContentsMargins(40, 40, 40, 40)
         gen_layout.setSpacing(24)
         
-        # Icona
+        # Icona principale
         icon_label = QLabel("✨")
         icon_label.setStyleSheet("font-size: 64px;")
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -254,171 +306,144 @@ class SubjectWindow(QMainWindow):
         
         # Titolo
         title_label = QLabel("Genera Flashcard con AI")
-        title_label.setStyleSheet("font-size: 24px; font-weight: 700; color: #171717;")
+        title_label.setStyleSheet("""
+            font-size: 24px; 
+            font-weight: 700; 
+            color: #171717;
+        """)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         gen_layout.addWidget(title_label)
         
         # Descrizione
-        desc_label = QLabel("L'AI analizzerà i tuoi documenti e creerà flashcard ottimizzate per il tuo apprendimento")
+        desc_label = QLabel(
+            "L'AI analizzerà i tuoi documenti e creerà flashcard "
+            "ottimizzate per il tuo apprendimento"
+        )
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("font-size: 14px; color: #737373;")
+        desc_label.setStyleSheet("""
+            font-size: 14px; 
+            color: #737373;
+        """)
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         gen_layout.addWidget(desc_label)
         
-        # Stats
-        self.doc_count_label = QLabel(f"📄 Documenti disponibili: 0")
+        # Statistiche documenti
+        self.doc_count_label = QLabel("📄 Documenti disponibili: 0")
         self.doc_count_label.setStyleSheet("""
             font-size: 16px;
             font-weight: 600;
             color: #8B5CF6;
-            background-color: #F3F4F6;
+            background-color: #F8F8F8;
             padding: 16px;
+            border: none;
             border-radius: 12px;
         """)
         self.doc_count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         gen_layout.addWidget(self.doc_count_label)
         
-        # NUOVO: Checkbox ricerca web
-        web_search_frame = QFrame()
-        web_search_frame.setStyleSheet("""
-            QFrame {
-                background-color: #F9FAFB;
-                border: 1px solid #E5E7EB;
-                border-radius: 12px;
-            }
-        """)
-        
-        web_search_layout = QHBoxLayout(web_search_frame)
-        web_search_layout.setContentsMargins(20, 16, 20, 16)
-        web_search_layout.setSpacing(12)
-        
-        # Icona
-        web_icon = QLabel("🌐")
-        web_icon.setStyleSheet("font-size: 24px;")
-        web_icon.setFixedSize(32, 32)
-        web_search_layout.addWidget(web_icon)
-        
-        # Testo
-        web_text_layout = QVBoxLayout()
-        web_text_layout.setSpacing(4)
-        
-        web_title = QLabel("Ricerca Web")
-        web_title.setStyleSheet("font-size: 14px; font-weight: 600; color: #171717;")
-        web_text_layout.addWidget(web_title)
-        
-        web_desc = QLabel("Consenti a Gemini di usare la sua conoscenza generale per integrare i documenti")
-        web_desc.setWordWrap(True)
-        web_desc.setStyleSheet("font-size: 12px; color: #6B7280;")
-        web_text_layout.addWidget(web_desc)
-        
-        web_search_layout.addLayout(web_text_layout, 1)  # stretch factor = 1
-        
-        # Checkbox
-        self.web_search_checkbox = QCheckBox()
-        self.web_search_checkbox.setChecked(False)
-        self.web_search_checkbox.setFixedSize(28, 28)
-        self.web_search_checkbox.setStyleSheet("""
-            QCheckBox {
-                spacing: 0px;
-            }
-            QCheckBox::indicator {
-                width: 28px;
-                height: 28px;
-                border-radius: 6px;
-                border: 2px solid #D1D5DB;
-                background-color: white;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #8B5CF6;
-                border-color: #8B5CF6;
-                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjMzMzMgNC4wMDAwMUw2LjAwMDAxIDExLjMzMzNMMi42NjY2NyA4LjAwMDAxIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K);
-            }
-            QCheckBox::indicator:hover {
-                border-color: #8B5CF6;
-            }
-        """)
-        web_search_layout.addWidget(self.web_search_checkbox)
-        
+        # Opzione ricerca web
+        web_search_frame = self.create_web_search_option()
         gen_layout.addWidget(web_search_frame)
         
         # Pulsante genera
-        self.generate_btn = QPushButton("✨ Genera Flashcard")
-        self.generate_btn.setProperty("class", "primary")
-        self.generate_btn.setFixedHeight(50)
-        self.generate_btn.clicked.connect(self.generate_flashcards)
-        gen_layout.addWidget(self.generate_btn)
-        
-        warning_label = QLabel("Carica prima alcuni documenti nella sezione 'Documenti'")
-        warning_label.setStyleSheet("font-size: 12px; color: #737373;")
-        warning_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        gen_layout.addWidget(warning_label)
+        generate_btn = QPushButton("✨ Genera Flashcard")
+        generate_btn.setProperty("class", "primary")
+        generate_btn.setFixedHeight(50)
+        generate_btn.clicked.connect(self.generate_flashcards)
+        gen_layout.addWidget(generate_btn)
         
         layout.addWidget(gen_card)
         
         return widget
-
+    
+    def create_web_search_option(self):
+        """Crea il frame per l'opzione di ricerca web"""
+        frame = QFrame()
+        frame.setStyleSheet("""
+            QFrame {
+                background-color: #F9FAFB;
+                border: none;
+                border-radius: 12px;
+            }
+        """)
+        
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
+        
+        # Icona web
+        web_icon = QLabel("🌐")
+        web_icon.setStyleSheet("font-size: 24px;")
+        web_icon.setFixedSize(32, 32)
+        layout.addWidget(web_icon)
+        
+        # Testo descrizione
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        
+        title = QLabel("Ricerca Web")
+        title.setStyleSheet("""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: #171717;
+        """)
+        text_layout.addWidget(title)
+        
+        desc = QLabel("Integra informazioni aggiornate dal web")
+        desc.setStyleSheet("""
+            font-size: 12px; 
+            color: #737373;
+        """)
+        text_layout.addWidget(desc)
+        
+        layout.addLayout(text_layout)
+        layout.addStretch()
+        
+        # Checkbox
+        self.web_search_checkbox = QCheckBox()
+        self.web_search_checkbox.setStyleSheet("""
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+            }
+        """)
+        layout.addWidget(self.web_search_checkbox)
+        
+        return frame
+    
     def create_flashcards_tab(self):
-        """Tab per visualizzare le flashcard"""
+        """Tab per visualizzare e gestire le flashcard"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(40, 40, 40, 40)
+        layout.setSpacing(24)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         
-        # Header con contatore ed export
+        # Header con contatore
         header_layout = QHBoxLayout()
         
-        self.flashcard_count_label = QLabel(f"Flashcard 0 di 0")
-        self.flashcard_count_label.setStyleSheet("font-size: 14px; color: #737373;")
-        header_layout.addWidget(self.flashcard_count_label)
-        
+        self.flashcard_counter = QLabel("0 / 0")
+        self.flashcard_counter.setStyleSheet("""
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #171717;
+        """)
+        header_layout.addWidget(self.flashcard_counter)
         header_layout.addStretch()
         
-        # Pulsante export
-        export_btn = QPushButton("💾 Esporta CSV")
+        # Pulsante esporta
+        export_btn = QPushButton("📥 Esporta")
         export_btn.setProperty("class", "secondary")
-        export_btn.clicked.connect(lambda: self.export_flashcards('csv'))
+        export_btn.clicked.connect(self.export_flashcards)
         header_layout.addWidget(export_btn)
-        
-        export_tsv_btn = QPushButton("💾 Esporta TSV")
-        export_tsv_btn.setProperty("class", "secondary")
-        export_tsv_btn.clicked.connect(lambda: self.export_flashcards('tsv'))
-        header_layout.addWidget(export_tsv_btn)
         
         layout.addLayout(header_layout)
         
-        # Card flashcard
-        self.flashcard_card = QFrame()
-        self.flashcard_card.setProperty("class", "card")
-        self.flashcard_card.setFixedSize(800, 400)
-        self.flashcard_card.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.flashcard_card.mousePressEvent = lambda e: self.flip_card()
-        
-        self.flashcard_layout = QVBoxLayout(self.flashcard_card)
-        self.flashcard_layout.setContentsMargins(40, 40, 40, 40)
-        self.flashcard_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Label per il contenuto
-        self.flashcard_label = QLabel("Nessuna flashcard disponibile")
-        self.flashcard_label.setWordWrap(True)
-        self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.flashcard_label.setStyleSheet("font-size: 20px; color: #262626;")
-        self.flashcard_layout.addWidget(self.flashcard_label)
-        
-        # Label per difficoltà
-        self.difficulty_label = QLabel()
-        self.difficulty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.difficulty_label.hide()
-        self.flashcard_layout.addWidget(self.difficulty_label)
-        
-        # Hint label
-        self.hint_label = QLabel("Clicca per girare la carta")
-        self.hint_label.setStyleSheet("font-size: 14px; color: #737373; margin-top: 20px;")
-        self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.flashcard_layout.addWidget(self.hint_label)
-        
+        # Card flashcard principale
+        self.flashcard_card = self.create_flashcard_display()
         layout.addWidget(self.flashcard_card, alignment=Qt.AlignmentFlag.AlignCenter)
         
-        # Pulsanti azione
+        # Pulsanti azione (modifica, elimina)
         action_layout = QHBoxLayout()
         action_layout.setSpacing(12)
         
@@ -435,63 +460,122 @@ class SubjectWindow(QMainWindow):
         layout.addLayout(action_layout)
         
         # Navigazione
+        nav_layout = self.create_navigation_controls()
+        layout.addLayout(nav_layout)
+        
+        return widget
+    
+    def create_flashcard_display(self):
+        """Crea la card per visualizzare la flashcard corrente"""
+        card = QFrame()
+        card.setProperty("class", "flashcard")
+        card.setFixedSize(600, 350)
+        card.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        # Evento click per girare la carta
+        card.mousePressEvent = lambda e: self.flip_card()
+        
+        self.flashcard_layout = QVBoxLayout(card)
+        self.flashcard_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.flashcard_layout.setSpacing(20)
+        
+        # Contenuto principale
+        self.flashcard_label = QLabel("Nessuna flashcard disponibile")
+        self.flashcard_label.setWordWrap(True)
+        self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.flashcard_label.setStyleSheet("""
+            font-size: 20px; 
+            color: #262626;
+        """)
+        self.flashcard_layout.addWidget(self.flashcard_label)
+        
+        # Label difficoltà
+        self.difficulty_label = QLabel()
+        self.difficulty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.difficulty_label.hide()
+        self.flashcard_layout.addWidget(self.difficulty_label)
+        
+        # Hint
+        self.hint_label = QLabel("Clicca per girare la carta")
+        self.hint_label.setStyleSheet("""
+            font-size: 14px; 
+            color: #737373; 
+            margin-top: 20px;
+        """)
+        self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.flashcard_layout.addWidget(self.hint_label)
+        
+        return card
+    
+    def create_navigation_controls(self):
+        """Crea i controlli di navigazione per le flashcard"""
         nav_layout = QHBoxLayout()
         nav_layout.setSpacing(12)
         
+        # Precedente
         self.prev_btn = QPushButton("◀ Precedente")
         self.prev_btn.setProperty("class", "secondary")
         self.prev_btn.setFixedWidth(150)
         self.prev_btn.clicked.connect(self.previous_flashcard)
         nav_layout.addWidget(self.prev_btn)
         
+        # Gira carta
         flip_btn = QPushButton("🔄 Gira Carta")
         flip_btn.setProperty("class", "secondary")
         flip_btn.setFixedWidth(150)
         flip_btn.clicked.connect(self.flip_card)
         nav_layout.addWidget(flip_btn)
         
+        # Successivo
         self.next_btn = QPushButton("Successivo ▶")
         self.next_btn.setProperty("class", "secondary")
         self.next_btn.setFixedWidth(150)
         self.next_btn.clicked.connect(self.next_flashcard)
         nav_layout.addWidget(self.next_btn)
         
-        layout.addLayout(nav_layout)
-        
-        return widget
+        return nav_layout
+    
+    # ==================== GESTIONE DATI ====================
     
     def load_data(self):
-        """Carica tutti i dati"""
+        """Carica tutti i dati necessari"""
         self.load_documents()
         self.load_flashcards()
         self.update_doc_count()
     
     def load_documents(self):
         """Carica e visualizza i documenti"""
-        # Pulisci layout
+        # Pulisci layout esistente
         while self.docs_layout.count():
             child = self.docs_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
         
+        # Recupera documenti dal database
         documents = self.db.get_documents_by_subject(self.subject_data['id'])
         
         # Aggiorna header
         self.docs_header.setText(f"Documenti Caricati ({len(documents)})")
         
+        # Mostra messaggio se vuoto
         if not documents:
             empty_label = QLabel("Nessun documento caricato ancora")
-            empty_label.setStyleSheet("font-size: 14px; color: #737373; padding: 40px;")
+            empty_label.setStyleSheet("""
+                font-size: 14px; 
+                color: #737373; 
+                padding: 40px;
+            """)
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.docs_layout.addWidget(empty_label)
             return
         
+        # Crea card per ogni documento
         for doc in documents:
             doc_card = self.create_document_card(doc)
             self.docs_layout.addWidget(doc_card)
     
     def upload_document(self):
-        """Carica un nuovo documento"""
+        """Gestisce l'upload di un nuovo documento"""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Seleziona Documento",
@@ -503,204 +587,223 @@ class SubjectWindow(QMainWindow):
             return
         
         try:
-            # Verifica dimensione
-            size = self.file_service.get_file_size(file_path)
-            if size > 10 * 1024 * 1024:  # 10MB
-                QMessageBox.warning(self, "Errore", "Il file è troppo grande (max 10MB)")
-                return
-            
-            # Estrai contenuto
-            content = self.file_service.extract_text(file_path)
-            
-            # Salva nel database
-            file_name = os.path.basename(file_path)
-            file_type = self.file_service.get_file_type(file_path)
-            
-            self.db.create_document(
-                self.subject_data['id'],
-                file_name,
-                file_path,
-                file_type,
-                content,
-                size
+            # Salva il documento
+            doc_id = self.file_service.save_document(
+                file_path, 
+                self.subject_data['id']
             )
             
-            QMessageBox.information(self, "Successo", "Documento caricato con successo!")
-            self.load_documents()
-            self.update_doc_count()
-            
+            if doc_id:
+                QMessageBox.information(
+                    self, 
+                    "Successo", 
+                    "Documento caricato con successo!"
+                )
+                self.load_documents()
+                self.update_doc_count()
+            else:
+                QMessageBox.warning(
+                    self, 
+                    "Errore", 
+                    "Errore durante il caricamento del documento"
+                )
         except Exception as e:
-            QMessageBox.critical(self, "Errore", f"Errore nel caricamento del documento: {e}")
+            QMessageBox.critical(
+                self, 
+                "Errore", 
+                f"Errore: {str(e)}"
+            )
     
     def delete_document(self, doc_id):
         """Elimina un documento"""
         reply = QMessageBox.question(
             self,
-            "Conferma",
+            "Conferma Eliminazione",
             "Sei sicuro di voler eliminare questo documento?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            try:
-                self.db.delete_document(doc_id)
+            if self.db.delete_document(doc_id):
+                QMessageBox.information(
+                    self, 
+                    "Successo", 
+                    "Documento eliminato!"
+                )
                 self.load_documents()
                 self.update_doc_count()
-                QMessageBox.information(self, "Successo", "Documento eliminato")
-            except Exception as e:
-                QMessageBox.critical(self, "Errore", f"Errore nell'eliminazione: {e}")
+            else:
+                QMessageBox.warning(
+                    self, 
+                    "Errore", 
+                    "Errore durante l'eliminazione"
+                )
     
     def update_doc_count(self):
         """Aggiorna il contatore dei documenti"""
-        count = self.db.get_document_count(self.subject_data['id'])
+        documents = self.db.get_documents_by_subject(self.subject_data['id'])
+        count = len(documents)
         self.doc_count_label.setText(f"📄 Documenti disponibili: {count}")
-
+    
+    # ==================== GENERAZIONE FLASHCARD ====================
+    
     def generate_flashcards(self):
-        """Genera flashcard dai documenti usando AI"""
-        # Verifica API key
-        api_key = os.environ.get('GEMINI_API_KEY')
-        if not api_key:
+        """Avvia la generazione delle flashcard"""
+        documents = self.db.get_documents_by_subject(self.subject_data['id'])
+        
+        if not documents:
             QMessageBox.warning(
                 self,
-                "API Key Mancante",
-                "Configura la tua Gemini API key nelle Impostazioni"
+                "Nessun Documento",
+                "Carica almeno un documento prima di generare flashcard"
             )
             return
         
-        # Verifica documenti
-        documents = self.db.get_documents_by_subject(self.subject_data['id'])
-        if not documents:
-            QMessageBox.warning(self, "Errore", "Carica almeno un documento prima di generare flashcard")
+        # Estrai contenuto dai documenti
+        all_content = []
+        for doc in documents:
+            if doc['content']:
+                all_content.append(doc['content'])
+        
+        if not all_content:
+            QMessageBox.warning(
+                self,
+                "Contenuto Vuoto",
+                "I documenti non contengono testo estraibile"
+            )
             return
         
-        # Combina contenuti
-        content = "\n\n".join([doc['content'] for doc in documents if doc['content']])
+        # Combina il contenuto
+        combined_content = "\n\n".join(all_content)
         
-        if not content.strip():
-            QMessageBox.warning(self, "Errore", "Nessun contenuto trovato nei documenti")
-            return
-        
-        # Verifica se usare la ricerca web
-        use_web_search = self.web_search_checkbox.isChecked()
-        
-        # Progress dialog
-        progress = QProgressDialog("Generazione flashcard in corso...", "Annulla", 0, 0, self)
+        # Mostra progress dialog
+        progress = QProgressDialog(
+            "Generazione flashcard in corso...", 
+            "Annulla", 
+            0, 
+            0, 
+            self
+        )
         progress.setWindowModality(Qt.WindowModality.WindowModal)
-        progress.setWindowTitle("Generazione AI")
-        progress.setCancelButton(None)
-        progress.show()
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
         
-        # Crea AI service
-        ai_service = AIService(api_key)
+        # Avvia il thread di generazione
+        use_web_search = self.web_search_checkbox.isChecked()
+        ai_service = AIService()
         
-        # Genera in thread - PASSA use_web_search
-        self.gen_thread = GenerationThread(ai_service, content, 10, use_web_search)
-        self.gen_thread.finished.connect(lambda cards: self.on_generation_finished(cards, progress))
-        self.gen_thread.error.connect(lambda err: self.on_generation_error(err, progress))
-        self.gen_thread.start()
-
-    def on_generation_finished(self, flashcards, progress):
-        """Callback quando la generazione è completata"""
+        self.generation_thread = GenerationThread(
+            ai_service,
+            combined_content,
+            num_cards=10,
+            use_web_search=use_web_search
+        )
+        
+        self.generation_thread.finished.connect(
+            lambda cards: self.on_generation_complete(cards, progress)
+        )
+        self.generation_thread.error.connect(
+            lambda error: self.on_generation_error(error, progress)
+        )
+        
+        progress.canceled.connect(self.generation_thread.terminate)
+        self.generation_thread.start()
+    
+    def on_generation_complete(self, flashcards, progress):
+        """Chiamata quando la generazione è completata"""
         progress.close()
         
         if not flashcards:
-            QMessageBox.warning(self, "Errore", "Nessuna flashcard generata")
+            QMessageBox.warning(
+                self,
+                "Nessuna Flashcard",
+                "Non è stato possibile generare flashcard"
+            )
             return
         
-        try:
-            # Salva nel database
-            cards_data = [
-                {
-                    'subject_id': self.subject_data['id'],
-                    'front': card['front'],
-                    'back': card['back'],
-                    'difficulty': card['difficulty']
-                }
-                for card in flashcards
-            ]
-            
-            self.db.create_flashcards_bulk(cards_data)
-            
-            QMessageBox.information(
-                self,
-                "Successo",
-                f"Generate {len(flashcards)} flashcard con successo!"
+        # Salva le flashcard nel database
+        for card in flashcards:
+            self.db.create_flashcard(
+                self.subject_data['id'],
+                card['front'],
+                card['back'],
+                card.get('difficulty', 'medio')
             )
-            
-            self.load_flashcards()
-            self.tabs.setCurrentIndex(2)  # Vai al tab flashcard
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Errore", f"Errore nel salvataggio: {e}")
+        
+        QMessageBox.information(
+            self,
+            "Successo",
+            f"Generate {len(flashcards)} flashcard!"
+        )
+        
+        self.load_flashcards()
+        self.tabs.setCurrentIndex(2)  # Passa al tab flashcard
     
     def on_generation_error(self, error, progress):
-        """Callback quando c'è un errore nella generazione"""
+        """Chiamata in caso di errore durante la generazione"""
         progress.close()
-        QMessageBox.critical(self, "Errore", f"Errore nella generazione: {error}")
-
+        QMessageBox.critical(
+            self,
+            "Errore",
+            f"Errore durante la generazione: {error}"
+        )
+    
+    # ==================== GESTIONE FLASHCARD ====================
+    
     def load_flashcards(self):
-        """Carica le flashcard"""
+        """Carica le flashcard dal database"""
         self.flashcards = self.db.get_flashcards_by_subject(self.subject_data['id'])
         self.current_flashcard_index = 0
         self.is_flipped = False
         self.update_flashcard_display()
     
-
     def update_flashcard_display(self):
         """Aggiorna la visualizzazione della flashcard corrente"""
         if not self.flashcards:
-            self.flashcard_label.setText("Nessuna flashcard disponibile\n\nVai nella sezione 'Genera' per creare flashcard")
-            self.flashcard_count_label.setText("Flashcard 0 di 0")
+            self.flashcard_label.setText("Nessuna flashcard disponibile")
             self.difficulty_label.hide()
-            self.hint_label.hide()
+            self.hint_label.setText("Genera flashcard per iniziare")
+            self.flashcard_counter.setText("0 / 0")
             self.prev_btn.setEnabled(False)
             self.next_btn.setEnabled(False)
-            # Ripristina stile base (usa lo stile QFrame.card generale)
-            self.flashcard_card.setStyleSheet("")
             return
         
+        # Aggiorna contatore
+        total = len(self.flashcards)
+        current = self.current_flashcard_index + 1
+        self.flashcard_counter.setText(f"{current} / {total}")
+        
+        # Mostra la flashcard corrente
         card = self.flashcards[self.current_flashcard_index]
         
-        # Aggiorna contatore
-        self.flashcard_count_label.setText(
-            f"Flashcard {self.current_flashcard_index + 1} di {len(self.flashcards)}"
-        )
-        
-        # Reset dello stile della card (usa lo stile QFrame.card generale)
-        self.flashcard_card.setStyleSheet("")
-        
-        # Mostra fronte o retro
         if self.is_flipped:
             self.flashcard_label.setText(card['back'])
-            self.hint_label.setText("")
+            self.hint_label.setText("Risposta")
             
             # Mostra difficoltà
-            diff = card.get('difficulty', 'medium')
-            diff_text = {'easy': 'Facile', 'medium': 'Medio', 'hard': 'Difficile'}
-            # Assicurati che DIFFICULTY_COLORS sia importato correttamente
-            diff_color = DIFFICULTY_COLORS.get(diff, '#8B5CF6') 
+            difficulty = card.get('difficulty', 'medio')
+            difficulty_colors = {
+                'facile': '#10B981',
+                'medio': '#F59E0B',
+                'difficile': '#EF4444'
+            }
+            difficulty_emoji = {
+                'facile': '😊',
+                'medio': '🤔',
+                'difficile': '💪'
+            }
             
-            # NUOVO: Applica lo stile colorato alla card GIRATA
-            self.flashcard_card.setStyleSheet(f"""
-                QFrame.card {{
-                    background-color: {diff_color}10; /* Sfondo leggerissimo */
-                    border: 2px solid {diff_color}; /* Bordo con colore difficoltà */
-                    border-radius: 16px;
-                }}
-                QFrame.card:hover {{
-                    border-color: {diff_color};
-                }}
-            """)
+            color = difficulty_colors.get(difficulty, '#F59E0B')
+            emoji = difficulty_emoji.get(difficulty, '🤔')
             
-            self.difficulty_label.setText(diff_text[diff])
+            self.difficulty_label.setText(f"{emoji} {difficulty.capitalize()}")
             self.difficulty_label.setStyleSheet(f"""
-                font-size: 12px;
+                font-size: 14px;
                 font-weight: 600;
-                color: {diff_color};
-                background-color: {diff_color}20; /* Sfondo leggero per la label */
-                padding: 6px 12px;
-                border-radius: 6px;
-                margin-top: 16px;
+                color: {color};
+                background-color: {self.get_color_with_opacity(color, 0.1)};
+                padding: 8px 16px;
+                border-radius: 20px;
             """)
             self.difficulty_label.show()
         else:
@@ -711,98 +814,37 @@ class SubjectWindow(QMainWindow):
         # Abilita/disabilita pulsanti navigazione
         self.prev_btn.setEnabled(self.current_flashcard_index > 0)
         self.next_btn.setEnabled(self.current_flashcard_index < len(self.flashcards) - 1)
-        """Aggiorna la visualizzazione della flashcard corrente"""
-        if not self.flashcards:
-            self.flashcard_label.setText("Nessuna flashcard disponibile\n\nVai nella sezione 'Genera' per creare flashcard")
-            self.flashcard_count_label.setText("Flashcard 0 di 0")
-            self.difficulty_label.hide()
-            self.hint_label.hide()
-            self.prev_btn.setEnabled(False)
-            self.next_btn.setEnabled(False)
-            # Ripristina stile base
-            self.flashcard_card.setStyleSheet("")
-            return
-        
-        card = self.flashcards[self.current_flashcard_index]
-        
-        # Aggiorna contatore
-        self.flashcard_count_label.setText(
-            f"Flashcard {self.current_flashcard_index + 1} di {len(self.flashcards)}"
-        )
-        
-        # Reset dello stile della card (usa lo stile generico QFrame.card di default)
-        self.flashcard_card.setStyleSheet("")
-        
-        # Mostra fronte o retro
-        if self.is_flipped:
-            self.flashcard_label.setText(card['back'])
-            self.hint_label.setText("")
-            
-            # Mostra difficoltà
-            diff = card.get('difficulty', 'medium')
-            diff_text = {'easy': 'Facile', 'medium': 'Medio', 'hard': 'Difficile'}
-            diff_color = DIFFICULTY_COLORS.get(diff, '#8B5CF6') # Colore in base alla difficoltà
-            
-            # NUOVO: Applica lo stile colorato alla card
-            self.flashcard_card.setStyleSheet(f"""
-                QFrame.card {{
-                    background-color: {diff_color}10; /* Sfondo molto leggero */
-                    border: 2px solid {diff_color}; /* Bordo con colore difficoltà */
-                    border-radius: 16px;
-                }}
-                QFrame.card:hover {{
-                    border-color: {diff_color};
-                }}
-            """)
-            
-            self.difficulty_label.setText(diff_text[diff])
-            self.difficulty_label.setStyleSheet(f"""
-                font-size: 12px;
-                font-weight: 600;
-                color: {diff_color};
-                background-color: {diff_color}20;
-                padding: 6px 12px;
-                border-radius: 6px;
-                margin-top: 16px;
-            """)
-            self.difficulty_label.show()
-        else:
-            self.flashcard_label.setText(card['front'])
-            self.hint_label.setText("Clicca per vedere la risposta")
-            self.difficulty_label.hide()
-        
-        # Abilita/disabilita pulsanti navigazione
-        self.prev_btn.setEnabled(self.current_flashcard_index > 0)
-        self.next_btn.setEnabled(self.current_flashcard_index < len(self.flashcards) - 1)
+    
     def flip_card(self):
-        """Gira la flashcard"""
+        """Gira la flashcard corrente"""
         if not self.flashcards:
             return
         
         self.is_flipped = not self.is_flipped
         self.update_flashcard_display()
     
-    def next_flashcard(self):
-        """Vai alla flashcard successiva"""
-        if self.current_flashcard_index < len(self.flashcards) - 1:
-            self.current_flashcard_index += 1
-            self.is_flipped = False
-            self.update_flashcard_display()
-    
     def previous_flashcard(self):
-        """Vai alla flashcard precedente"""
+        """Passa alla flashcard precedente"""
         if self.current_flashcard_index > 0:
             self.current_flashcard_index -= 1
             self.is_flipped = False
             self.update_flashcard_display()
     
+    def next_flashcard(self):
+        """Passa alla flashcard successiva"""
+        if self.current_flashcard_index < len(self.flashcards) - 1:
+            self.current_flashcard_index += 1
+            self.is_flipped = False
+            self.update_flashcard_display()
+    
     def edit_current_flashcard(self):
-        """Modifica la flashcard corrente"""
+        """Apre il dialog per modificare la flashcard corrente"""
         if not self.flashcards:
             return
         
         card = self.flashcards[self.current_flashcard_index]
         dialog = EditFlashcardDialog(card, self)
+        
         if dialog.exec():
             self.load_flashcards()
     
@@ -813,44 +855,75 @@ class SubjectWindow(QMainWindow):
         
         reply = QMessageBox.question(
             self,
-            "Conferma",
+            "Conferma Eliminazione",
             "Sei sicuro di voler eliminare questa flashcard?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            try:
-                card = self.flashcards[self.current_flashcard_index]
-                self.db.delete_flashcard(card['id'])
-                QMessageBox.information(self, "Successo", "Flashcard eliminata")
-                self.load_flashcards()
-            except Exception as e:
-                QMessageBox.critical(self, "Errore", f"Errore nell'eliminazione: {e}")
+            card = self.flashcards[self.current_flashcard_index]
+            
+            if self.db.delete_flashcard(card['id']):
+                QMessageBox.information(
+                    self,
+                    "Successo",
+                    "Flashcard eliminata!"
+                )
+                
+                # Ricarica e aggiusta l'indice
+                self.flashcards.pop(self.current_flashcard_index)
+                if self.current_flashcard_index >= len(self.flashcards):
+                    self.current_flashcard_index = max(0, len(self.flashcards) - 1)
+                
+                self.is_flipped = False
+                self.update_flashcard_display()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Errore",
+                    "Errore durante l'eliminazione"
+                )
     
-    def export_flashcards(self, format_type):
-        """Esporta le flashcard"""
+    def export_flashcards(self):
+        """Esporta le flashcard in vari formati"""
         if not self.flashcards:
-            QMessageBox.warning(self, "Errore", "Nessuna flashcard da esportare")
+            QMessageBox.warning(
+                self,
+                "Nessuna Flashcard",
+                "Non ci sono flashcard da esportare"
+            )
             return
         
-        filter_str = ExportService.get_export_filter(format_type)
-        file_path, _ = QFileDialog.getSaveFileName(
+        # Chiedi formato di export
+        export_service = ExportService()
+        
+        file_path, selected_filter = QFileDialog.getSaveFileName(
             self,
             "Esporta Flashcard",
-            f"flashcards_{self.subject_data['name']}.{format_type}",
-            filter_str
+            f"{self.subject_data['name']}_flashcards",
+            "PDF (*.pdf);;CSV (*.csv);;Anki (*.txt)"
         )
         
         if not file_path:
             return
         
         try:
-            export_service = ExportService()
-            if format_type == 'csv':
+            # Determina il formato in base al filtro selezionato
+            if 'PDF' in selected_filter:
+                export_service.export_to_pdf(self.flashcards, file_path)
+            elif 'CSV' in selected_filter:
                 export_service.export_to_csv(self.flashcards, file_path)
-            elif format_type == 'tsv':
-                export_service.export_to_tsv(self.flashcards, file_path)
+            elif 'Anki' in selected_filter:
+                export_service.export_to_anki(self.flashcards, file_path)
             
-            QMessageBox.information(self, "Successo", "Flashcard esportate con successo!")
+            QMessageBox.information(
+                self,
+                "Successo",
+                "Flashcard esportate con successo!"
+            )
         except Exception as e:
-            QMessageBox.critical(self, "Errore", f"Errore nell'esportazione: {e}")
+            QMessageBox.critical(
+                self,
+                "Errore",
+                f"Errore durante l'esportazione: {str(e)}"
+            )
