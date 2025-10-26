@@ -140,8 +140,8 @@ class SubjectWindow(QMainWindow):
         upload_card = QFrame()
         upload_card.setStyleSheet("""
             QFrame {
-                background-color: #FAFAFA; /* Sfondo molto leggero per distinguerlo */
-                border: 1px solid #D4D4D4; /* Bordo continuo e pulito */
+                background-color: white; /* Sfondo bianco */
+                border: none; /* NESSUN BORDO */
                 border-radius: 16px;
             }
         """)

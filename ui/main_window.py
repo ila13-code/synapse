@@ -204,13 +204,13 @@ class MainWindow(QMainWindow):
         card.setStyleSheet("""
             QFrame {
                 background-color: white;
-                border: 1px solid #E8E8E8; /* Bordo continuo e sottile */
+                border: none; /* NESSUN BORDO */
                 border-radius: 16px;
             }
             QFrame:hover {
-                border: 1px solid #8B5CF6; /* Bordo primario in hover */
-                /* Rimuoviamo il gradiente per evitare effetti sporchi */
-                background-color: #F8F8F8; /* Sfondo leggerissimo in hover */
+                /* Hover pulito con solo leggero cambio di sfondo */
+                background-color: #F8F8F8;
+                border: none;
             }
         """)
         
