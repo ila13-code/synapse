@@ -147,31 +147,36 @@ QLabel.caption {
     color: #737373;
 }
 
-/* Tab Widget */
+/* Tab Widget - STILE MODERNO E PIÙ VISIBILE */
 QTabWidget::pane {
     border: none;
     background-color: transparent;
+    border-top: 2px solid #E8E8E8;
+    margin-top: -1px;
 }
 
 QTabBar::tab {
     background-color: transparent;
     color: #737373;
-    padding: 12px 24px;
+    padding: 16px 28px;
     border: none;
-    border-radius: 10px;
-    margin-right: 4px;
-    font-weight: 500;
-    font-size: 14px;
+    border-bottom: 3px solid transparent;
+    margin-right: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    min-width: 100px;
 }
 
 QTabBar::tab:selected {
-    background-color: white;
+    background-color: transparent;
     color: #8B5CF6;
-    font-weight: 600;
+    border-bottom: 3px solid #8B5CF6;
 }
 
 QTabBar::tab:hover:!selected {
-    background-color: #F5F5F5;
+    background-color: rgba(139, 92, 246, 0.05);
+    color: #8B5CF6;
+    border-bottom: 3px solid rgba(139, 92, 246, 0.3);
 }
 
 /* ScrollArea */
@@ -279,12 +284,6 @@ QCheckBox::indicator:hover {
 QCheckBox::indicator:checked {
     background-color: #8B5CF6;
     border-color: #8B5CF6;
-    image: none;
-}
-
-QCheckBox::indicator:checked:after {
-    content: "✓";
-    color: white;
 }
 
 /* Dialog */

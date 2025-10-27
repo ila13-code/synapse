@@ -116,12 +116,11 @@ class SubjectWindow(QMainWindow):
         info_layout = QHBoxLayout()
         info_layout.setSpacing(12)
         
-        # Indicatore colore con opacità corretta
+        # Indicatore colore SENZA opacità - colore pieno!
         color_indicator = QFrame()
         color_indicator.setFixedSize(40, 40)
-        bg_color = self.get_color_with_opacity(self.subject_data['color'], 0.2)
         color_indicator.setStyleSheet(f"""
-            background-color: {bg_color};
+            background-color: {self.subject_data['color']};
             border-radius: 10px;
         """)
         info_layout.addWidget(color_indicator)

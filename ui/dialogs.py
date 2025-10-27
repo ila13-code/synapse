@@ -338,8 +338,8 @@ class SettingsDialog(QDialog):
         input_layout.addWidget(self.api_input)
         
         # Pulsante mostra/nascondi
-        self.show_btn = QPushButton(" Mostra")
-        self.show_btn.setIcon(IconProvider.get_icon('key', 16, '#262626'))
+        self.show_btn = QPushButton()
+        self.show_btn.setIcon(IconProvider.get_icon('eye', 16, '#262626'))
         self.show_btn.setProperty("class", "secondary")
         self.show_btn.setFixedWidth(100)
         self.show_btn.setMinimumHeight(44)
@@ -395,10 +395,12 @@ class SettingsDialog(QDialog):
         """Toggle della visibilità dell'API key"""
         if self.api_input.echoMode() == QLineEdit.EchoMode.Password:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.show_btn.setText(" Nascondi")
+            self.show_btn.setText("")
+            self.show_btn.setIcon(IconProvider.get_icon('eye-slash', 16, '#262626'))
         else:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.show_btn.setText(" Mostra")
+            self.show_btn.setText("")
+            self.show_btn.setIcon(IconProvider.get_icon('eye', 16, '#262626'))
     
     def load_settings(self):
         """Carica le impostazioni salvate"""
