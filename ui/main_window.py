@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QLabel, QPushButton, QScrollArea, QGridLayout, QFrame)
+                             QLabel, QPushButton, QScrollArea, QGridLayout, QFrame, QMessageBox)
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QFont
 from database.db_manager import DatabaseManager
@@ -41,10 +41,39 @@ class SubjectCard(QFrame):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
+        # Header con icona e pulsante elimina
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(0)
+        
         # Icona del libro con colore della materia
         icon_label = QLabel()
         IconProvider.setup_icon_label(icon_label, 'book', 32, accent_color)
-        layout.addWidget(icon_label)
+        header_layout.addWidget(icon_label)
+        
+        header_layout.addStretch()
+        
+        # Pulsante elimina
+        delete_btn = QPushButton()
+        delete_btn.setIcon(IconProvider.get_icon('trash', 16, '#EF4444'))
+        delete_btn.setProperty("class", "icon-button")
+        delete_btn.setFixedSize(32, 32)
+        delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        delete_btn.setToolTip("Elimina materia")
+        delete_btn.clicked.connect(self.delete_subject)
+        delete_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 6px;
+                padding: 4px;
+            }
+            QPushButton:hover {
+                background-color: #FEE2E2;
+            }
+        """)
+        header_layout.addWidget(delete_btn)
+        
+        layout.addLayout(header_layout)
         
         layout.addStretch()
         
@@ -92,12 +121,46 @@ class SubjectCard(QFrame):
         
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.open_subject()
+            # Verifica che il clic non sia sul pulsante elimina
+            if not self.childAt(event.pos()) or not isinstance(self.childAt(event.pos()), QPushButton):
+                self.open_subject()
             
     def open_subject(self):
         """Apre la finestra della materia"""
         self.subject_window = SubjectWindow(self.subject_data, self.parent_window)
         self.subject_window.show()
+    
+    def delete_subject(self):
+        """Elimina la materia dopo conferma"""
+        reply = QMessageBox.question(
+            self,
+            'Conferma Eliminazione',
+            f'Sei sicuro di voler eliminare la materia "{self.subject_data["name"]}"?\n\n'
+            f'Verranno eliminati anche tutti i documenti e le flashcard associati.',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                db = DatabaseManager()
+                db.delete_subject(self.subject_data['id'])
+                
+                # Aggiorna la visualizzazione della finestra principale
+                if self.parent_window:
+                    self.parent_window.load_subjects()
+                
+                QMessageBox.information(
+                    self,
+                    'Materia Eliminata',
+                    f'La materia "{self.subject_data["name"]}" è stata eliminata con successo.'
+                )
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    'Errore',
+                    f'Errore durante l\'eliminazione della materia:\n{str(e)}'
+                )
 
 
 class MainWindow(QMainWindow):

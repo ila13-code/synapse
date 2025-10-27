@@ -159,9 +159,6 @@ class CreateSubjectDialog(QDialog):
                     border: 3px solid #171717;
                     border-radius: 12px;
                 }}
-                QPushButton:hover {{
-                    transform: scale(1.05);
-                }}
             """)
         else:
             button.setStyleSheet(f"""
