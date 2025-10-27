@@ -57,6 +57,18 @@ class DatabaseManager:
             )
         ''')
         
+        
+        # Tabella settings
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        ''')
+        
+        # Inserisci impostazioni di default se non esistono
+        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('theme', 'light')")
+        
         conn.commit()
     
     # --- SUBJECTS ---
@@ -180,6 +192,27 @@ class DatabaseManager:
         cursor = conn.cursor()
         cursor.execute('SELECT COUNT(*) as count FROM flashcards WHERE subject_id = ?', (subject_id,))
         return cursor.fetchone()['count']
+    
+    
+    # --- SETTINGS ---
+    
+    def get_setting(self, key: str, default: str = None) -> str:
+        """Ottiene una impostazione dal database"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT value FROM settings WHERE key = ?', (key,))
+        row = cursor.fetchone()
+        return row['value'] if row else default
+    
+    def set_setting(self, key: str, value: str):
+        """Salva una impostazione nel database"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO settings (key, value)
+            VALUES (?, ?)
+        ''', (key, value))
+        conn.commit()
     
     def close(self):
         if self.conn:

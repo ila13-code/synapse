@@ -3,7 +3,9 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QFont
 from database.db_manager import DatabaseManager
-from ui.styles import MAIN_STYLE
+# Importa le funzioni tema
+from ui.styles import (get_theme_style, get_theme_colors, get_text_color, 
+                       get_secondary_text_color, get_caption_text_color, get_icon_color, get_card_background) 
 from ui.dialogs import CreateSubjectDialog, SettingsDialog
 from ui.subject_window import SubjectWindow
 from ui.icons import IconProvider
@@ -19,21 +21,38 @@ class SubjectCard(QFrame):
         
     def setup_ui(self):
         accent_color = self.subject_data['color']
+        text_color = get_text_color()
+        card_bg = get_card_background()
+        
+        # Ottieni il tema per decidere il colore hover
+        try:
+            from database.db_manager import DatabaseManager
+            db = DatabaseManager()
+            theme = db.get_setting('theme', 'light')
+        except:
+            theme = 'light'
+        
+        # Hover diverso per light e dark mode
+        if theme == 'dark':
+            hover_bg = "#222222"
+        else:
+            hover_bg = "#F5F5F5"
+
         self.setFixedSize(280, 200)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         # Styling pulito e professionale per le card
         self.setStyleSheet(f"""
             SubjectCard {{
-                background-color: white;
-                border: 1px solid #E8E8E8;
+                background-color: {card_bg};
+                border: 1px solid {get_caption_text_color()}50; 
                 border-left: 4px solid {accent_color};
                 border-radius: 12px;
             }}
             SubjectCard:hover {{
                 border: 1px solid {accent_color};
                 border-left: 4px solid {accent_color};
-                background-color: #FAFAFA;
+                background-color: {hover_bg}; 
             }}
         """)
         
@@ -52,7 +71,7 @@ class SubjectCard(QFrame):
         
         header_layout.addStretch()
         
-        # Pulsante elimina
+        # Pulsante elimina - Colore icona e hover sensibili al tema
         delete_btn = QPushButton()
         delete_btn.setIcon(IconProvider.get_icon('trash', 16, '#EF4444'))
         delete_btn.setProperty("class", "icon-button")
@@ -60,16 +79,17 @@ class SubjectCard(QFrame):
         delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         delete_btn.setToolTip("Elimina materia")
         delete_btn.clicked.connect(self.delete_subject)
-        delete_btn.setStyleSheet("""
-            QPushButton {
+        # Sovrascrive lo stile generale solo per il colore hover del tasto rosso
+        delete_btn.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
                 border: none;
                 border-radius: 6px;
                 padding: 4px;
-            }
-            QPushButton:hover {
-                background-color: #FEE2E2;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: #EF444430; /* Rosso con opacità */
+            }}
         """)
         header_layout.addWidget(delete_btn)
         
@@ -77,13 +97,13 @@ class SubjectCard(QFrame):
         
         layout.addStretch()
         
-        # Nome materia
+        # Nome materia - Usa get_text_color()
         name_label = QLabel(self.subject_data['name'])
         name_label.setWordWrap(True)
-        name_label.setStyleSheet("""
+        name_label.setStyleSheet(f"""
             font-size: 18px; 
             font-weight: 700; 
-            color: #171717;
+            color: {text_color};
             background: transparent;
             border: none;
             padding: 0;
@@ -91,13 +111,13 @@ class SubjectCard(QFrame):
         """)
         layout.addWidget(name_label)
         
-        # Descrizione (se presente)
+        # Descrizione (se presente) - Usa get_secondary_text_color()
         if self.subject_data.get('description'):
             desc_label = QLabel(self.subject_data['description'])
             desc_label.setWordWrap(True)
-            desc_label.setStyleSheet("""
+            desc_label.setStyleSheet(f"""
                 font-size: 13px; 
-                color: #525252;
+                color: {get_secondary_text_color()};
                 background: transparent;
                 border: none;
                 padding: 0;
@@ -107,11 +127,11 @@ class SubjectCard(QFrame):
         else:
             layout.addSpacing(18)
         
-        # Data creazione
+        # Data creazione - Usa get_caption_text_color()
         date_label = QLabel(f"Creata il {self.subject_data['created_at'][:10]}")
-        date_label.setStyleSheet("""
+        date_label.setStyleSheet(f"""
             font-size: 11px; 
-            color: #A3A3A3;
+            color: {get_caption_text_color()};
             background: transparent;
             border: none;
             padding: 0;
@@ -122,16 +142,18 @@ class SubjectCard(QFrame):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             # Verifica che il clic non sia sul pulsante elimina
-            if not self.childAt(event.pos()) or not isinstance(self.childAt(event.pos()), QPushButton):
+            child = self.childAt(event.pos())
+            if not child or (not isinstance(child, QPushButton) and child != self.parent_window.findChild(QPushButton, "delete_btn")):
                 self.open_subject()
             
     def open_subject(self):
         """Apre la finestra della materia"""
-        self.subject_window = SubjectWindow(self.subject_data, self.parent_window)
+        self.subject_window = SubjectWindow(self.subject_data, self) # Passa SubjectCard come parent
         self.subject_window.show()
     
     def delete_subject(self):
         """Elimina la materia dopo conferma"""
+        # ... (il codice di delete_subject rimane invariato)
         reply = QMessageBox.question(
             self,
             'Conferma Eliminazione',
@@ -170,12 +192,25 @@ class MainWindow(QMainWindow):
         self.subject_windows = [] 
         self.setup_ui()
         self.load_subjects()
+    
+    # Nuovo metodo per applicare il tema in tempo reale
+    def apply_theme(self):
+        """Applica lo stile del tema corrente immediatamente"""
+        self.setStyleSheet(get_theme_style())
+        # Forza la ricarica dei widget sensibili al tema
+        self.load_subjects() # Le SubjectCard ricaricheranno i loro stili
+        self.update() 
+        
+        # Ricarica l'header per gli stili hardcodati al suo interno
+        header = self.centralWidget().layout().itemAt(0).widget()
+        self.centralWidget().layout().replaceWidget(header, self.create_header())
+        header.deleteLater()
         
     def setup_ui(self):
         self.setWindowTitle("Synapse - AI Flashcard Generator")
         self.setMinimumSize(1200, 800)
         
-        self.setStyleSheet(MAIN_STYLE)
+        self.setStyleSheet(get_theme_style())
         
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -204,26 +239,28 @@ class MainWindow(QMainWindow):
         title_layout = QHBoxLayout()
         title_layout.setSpacing(12)
         
-        # Logo con icona brain
+        # Logo con icona brain - Usa colori tema
         logo_label = QLabel()
-        IconProvider.setup_icon_label(logo_label, 'brain', 28, '#8B5CF6')
+        # Colore primario hardcodato (Purple/Viola)
+        primary_color = '#8B5CF6' 
+        IconProvider.setup_icon_label(logo_label, 'brain', 28, primary_color)
         title_layout.addWidget(logo_label)
         
-        # Titolo
+        # Titolo - Usa colori tema
         title_label = QLabel("Synapse")
-        title_label.setStyleSheet("""
+        title_label.setStyleSheet(f"""
             font-size: 24px;
             font-weight: 700;
-            color: #8B5CF6;
+            color: {primary_color};
         """)
         title_layout.addWidget(title_label)
         
         layout.addLayout(title_layout)
         layout.addStretch()
         
-        # Bottone impostazioni con icona
+        # Bottone impostazioni con icona - Usa colori tema
         settings_btn = QPushButton(" Impostazioni")
-        settings_btn.setIcon(IconProvider.get_icon('settings', 18, '#262626'))
+        settings_btn.setIcon(IconProvider.get_icon('settings', 18, get_icon_color())) # Usa get_icon_color()
         settings_btn.setProperty("class", "secondary")
         settings_btn.clicked.connect(self.show_settings)
         layout.addWidget(settings_btn)
@@ -241,6 +278,7 @@ class MainWindow(QMainWindow):
         header_layout = QVBoxLayout()
         header_layout.setSpacing(8)
         
+        # I QLabel.title e QLabel.body sono gestiti in styles.py
         title = QLabel("Le tue Materie")
         title.setProperty("class", "title")
         header_layout.addWidget(title)
@@ -283,44 +321,55 @@ class MainWindow(QMainWindow):
         card.setFixedSize(280, 200)
         card.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        card.setStyleSheet("""
-            QFrame {
-                background-color: white;
-                border: 2px dashed #E8E8E8;
+        # Usa le funzioni tema per i colori
+        primary_color = '#8B5CF6'
+        card_bg = get_card_background()
+        theme = self.db.get_setting('theme', 'light')
+        
+        # Hover diverso per light e dark mode
+        if theme == 'dark':
+            hover_bg = "#222222"
+        else:
+            hover_bg = "#F5F5F5"
+        
+        card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {card_bg};
+                border: 2px dashed {get_caption_text_color()}50;
                 border-radius: 12px;
-            }
-            QFrame:hover {
-                background-color: #FAFAFA;
-                border: 2px dashed #8B5CF6;
-            }
+            }}
+            QFrame:hover {{
+                background-color: {hover_bg};
+                border: 2px dashed {primary_color};
+            }}
         """)
         
         layout = QVBoxLayout(card)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(16)
         
-        # Icona plus
+        # Icona plus - Usa colori tema
         icon_label = QLabel()
-        IconProvider.setup_icon_label(icon_label, 'plus', 48, '#8B5CF6')
+        IconProvider.setup_icon_label(icon_label, 'plus', 48, primary_color)
         layout.addWidget(icon_label)
         
-        # Testo principale
+        # Testo principale - Usa get_text_color()
         text_label = QLabel("Nuova Materia")
-        text_label.setStyleSheet("""
+        text_label.setStyleSheet(f"""
             font-size: 16px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_text_color()};
             background: transparent;
             border: none;
         """)
         text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(text_label)
         
-        # Descrizione
+        # Descrizione - Usa get_caption_text_color()
         desc_label = QLabel("Crea una nuova cartella di studio")
-        desc_label.setStyleSheet("""
+        desc_label.setStyleSheet(f"""
             font-size: 13px; 
-            color: #737373;
+            color: {get_caption_text_color()};
             background: transparent;
             border: none;
         """)
@@ -336,11 +385,13 @@ class MainWindow(QMainWindow):
         subjects = self.db.get_all_subjects()
 
         # Rimuovi tutte le card tranne quella "Nuova Materia" in posizione (0,0)
+        # Rimuovi tutte le card tranne la card di creazione che è l'unica con item_index=0
         for i in reversed(range(self.grid_layout.count())):
             item = self.grid_layout.itemAt(i)
-            position = self.grid_layout.getItemPosition(i)
-        
-            if position == (0, 0, 1, 1):
+            widget = item.widget()
+            
+            # Non rimuovere la card "Nuova Materia"
+            if widget and widget.inherits('QFrame') and 'Nuova Materia' in widget.findChild(QLabel).text():
                 continue
 
             if item:
@@ -348,11 +399,22 @@ class MainWindow(QMainWindow):
                 if item.widget():
                     item.widget().deleteLater()
         
+        # Ricarica la card "Nuova Materia" per applicare il tema
+        new_card_item = self.grid_layout.itemAtPosition(0, 0)
+        if new_card_item and new_card_item.widget():
+            new_card_widget = new_card_item.widget()
+            self.grid_layout.removeWidget(new_card_widget)
+            new_card_widget.deleteLater()
+        
+        create_card = self.create_new_subject_card()
+        self.grid_layout.addWidget(create_card, 0, 0)
+
         COLUMNS = 4
         
         # Aggiungi le card delle materie
         for idx, subject in enumerate(subjects):
-            card = SubjectCard(subject, self)
+            # Passiamo SubjectCard la MainWindow come parent_window per il ricaricamento
+            card = SubjectCard(subject, self) 
 
             item_index = idx + 1
             row = item_index // COLUMNS
@@ -360,7 +422,8 @@ class MainWindow(QMainWindow):
             
             self.grid_layout.addWidget(card, row, col)
         
-        self.grid_layout.setColumnStretch(COLUMNS, 1)
+        # Assicura che la griglia riempia lo spazio in larghezza
+        self.grid_layout.setColumnStretch(COLUMNS, 1) 
         self.grid_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
     
     def create_subject(self):
@@ -372,4 +435,6 @@ class MainWindow(QMainWindow):
     def show_settings(self):
         """Mostra il dialog delle impostazioni"""
         dialog = SettingsDialog(self)
+        # Connessione per l'hot reload del tema
+        dialog.theme_changed.connect(self.apply_theme) 
         dialog.exec()

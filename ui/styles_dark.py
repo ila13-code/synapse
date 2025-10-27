@@ -1,54 +1,58 @@
 """
-Stili CSS per l'applicazione Synapse
-Replica il design system dell'interfaccia web originale
+Stili CSS Dark Mode per l'applicazione Synapse
+Palette scura professionale e moderna
 """
 
-MAIN_STYLE = """
+DARK_STYLE = """
 QMainWindow {
-    background-color: #FAFAFA;
+    background-color: #0F0F0F;
 }
 
 /* Header */
 QWidget#header {
-    background-color: white;
-    border-bottom: 1px solid #E8E8E8;
+    background-color: #1A1A1A;
+    border-bottom: 1px solid #2A2A2A;
 }
 
-/* Cards - STYLING MIGLIORATO */
+/* Cards - DARK MODE VERA */
 QFrame.card, SubjectCard {
-    background-color: white;
-    border: 1px solid #E8E8E8;
+    background-color: #1A1A1A;
+    border: 1px solid #2A2A2A;
     border-radius: 12px;
 }
 
 QFrame.card:hover, SubjectCard:hover {
     border-color: #8B5CF6;
-    background-color: white;
+    background-color: #222222;
 }
 
-/* Fix per i QLabel dentro le card */
+/* Fix per i QLabel dentro le card - TESTO BIANCO */
 SubjectCard QLabel {
     background-color: transparent;
     border: none;
-    outline: none;
+    color: #E5E5E5;
 }
 
 QFrame.card QLabel {
     background-color: transparent;
     border: none;
-    outline: none;
+    color: #E5E5E5;
 }
 
 /* Flashcard styling */
 QFrame.flashcard {
-    background-color: white;
-    border: 2px solid #E8E8E8;
+    background-color: #1A1A1A;
+    border: 2px solid #2A2A2A;
     border-radius: 16px;
     padding: 30px;
 }
 
 QFrame.flashcard:hover {
     border-color: #8B5CF6;
+}
+
+QFrame.flashcard QLabel {
+    color: #E5E5E5;
 }
 
 /* Buttons */
@@ -65,23 +69,23 @@ QPushButton.primary {
 
 QPushButton.primary:hover {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                               stop:0 #7C3AED, stop:1 #2563EB);
+                               stop:0 #9D6FFF, stop:1 #4A9AFF);
 }
 
 QPushButton.primary:pressed {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                               stop:0 #6D28D9, stop:1 #1D4ED8);
+                               stop:0 #7C3AED, stop:1 #2563EB);
 }
 
 QPushButton.primary:disabled {
-    background: #D4D4D4;
-    color: #A3A3A3;
+    background: #2A2A2A;
+    color: #525252;
 }
 
 QPushButton.secondary {
-    background-color: white;
-    color: #262626;
-    border: 1px solid #E8E8E8;
+    background-color: #1A1A1A;
+    color: #E5E5E5;
+    border: 1px solid #2A2A2A;
     border-radius: 12px;
     padding: 10px 20px;
     font-weight: 500;
@@ -89,12 +93,12 @@ QPushButton.secondary {
 }
 
 QPushButton.secondary:hover {
-    background-color: #F5F5F5;
-    border-color: #D4D4D4;
+    background-color: #262626;
+    border-color: #3A3A3A;
 }
 
 QPushButton.secondary:pressed {
-    background-color: #E5E5E5;
+    background-color: #2A2A2A;
 }
 
 QPushButton.icon-button {
@@ -105,17 +109,17 @@ QPushButton.icon-button {
 }
 
 QPushButton.icon-button:hover {
-    background-color: #F5F5F5;
+    background-color: #262626;
 }
 
 /* Input Fields */
 QLineEdit, QTextEdit {
-    background-color: white;
-    border: 1px solid #E8E8E8;
+    background-color: #1A1A1A;
+    border: 1px solid #2A2A2A;
     border-radius: 12px;
     padding: 10px 14px;
     font-size: 14px;
-    color: #262626;
+    color: #E5E5E5;
 }
 
 QLineEdit:focus, QTextEdit:focus {
@@ -130,48 +134,47 @@ QLineEdit:read-only, QTextEdit:read-only {
 }
 
 QLineEdit::placeholder, QTextEdit::placeholder {
-    color: #A3A3A3;
+    color: #525252;
 }
 
-/* Labels */
+/* Labels - TUTTI BIANCHI */
 QLabel {
-    border: none;
-    outline: none;
+    color: #E5E5E5;
 }
 
 QLabel.title {
     font-size: 24px;
     font-weight: 700;
-    color: #171717;
+    color: #F5F5F5;
 }
 
 QLabel.subtitle {
     font-size: 16px;
     font-weight: 600;
-    color: #262626;
+    color: #E5E5E5;
 }
 
 QLabel.body {
     font-size: 14px;
-    color: #525252;
+    color: #B3B3B3;
 }
 
 QLabel.caption {
     font-size: 12px;
-    color: #737373;
+    color: #8A8A8A;
 }
 
-/* Tab Widget - STILE MODERNO E PIÙ VISIBILE */
+/* Tab Widget - DARK */
 QTabWidget::pane {
     border: none;
     background-color: transparent;
-    border-top: 2px solid #E8E8E8;
+    border-top: 2px solid #2A2A2A;
     margin-top: -1px;
 }
 
 QTabBar::tab {
     background-color: transparent;
-    color: #737373;
+    color: #8A8A8A;
     padding: 16px 28px;
     border: none;
     border-bottom: 3px solid transparent;
@@ -188,8 +191,8 @@ QTabBar::tab:selected {
 }
 
 QTabBar::tab:hover:!selected {
-    background-color: rgba(139, 92, 246, 0.05);
-    color: #8B5CF6;
+    background-color: rgba(139, 92, 246, 0.1);
+    color: #9D6FFF;
     border-bottom: 3px solid rgba(139, 92, 246, 0.3);
 }
 
@@ -201,19 +204,19 @@ QScrollArea {
 
 QScrollBar:vertical {
     border: none;
-    background-color: #F5F5F5;
+    background-color: #1A1A1A;
     width: 10px;
     border-radius: 5px;
 }
 
 QScrollBar::handle:vertical {
-    background-color: #D4D4D4;
+    background-color: #3A3A3A;
     border-radius: 5px;
     min-height: 20px;
 }
 
 QScrollBar::handle:vertical:hover {
-    background-color: #A3A3A3;
+    background-color: #4A4A4A;
 }
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
@@ -222,19 +225,19 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 QScrollBar:horizontal {
     border: none;
-    background-color: #F5F5F5;
+    background-color: #1A1A1A;
     height: 10px;
     border-radius: 5px;
 }
 
 QScrollBar::handle:horizontal {
-    background-color: #D4D4D4;
+    background-color: #3A3A3A;
     border-radius: 5px;
     min-width: 20px;
 }
 
 QScrollBar::handle:horizontal:hover {
-    background-color: #A3A3A3;
+    background-color: #4A4A4A;
 }
 
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
@@ -243,11 +246,12 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
 
 /* ComboBox */
 QComboBox {
-    background-color: white;
-    border: 1px solid #E8E8E8;
+    background-color: #1A1A1A;
+    border: 1px solid #2A2A2A;
     border-radius: 12px;
     padding: 8px 12px;
     font-size: 14px;
+    color: #E5E5E5;
 }
 
 QComboBox:focus {
@@ -263,16 +267,17 @@ QComboBox::down-arrow {
     image: none;
     border-left: 4px solid transparent;
     border-right: 4px solid transparent;
-    border-top: 6px solid #737373;
+    border-top: 6px solid #E5E5E5;
     margin-right: 5px;
 }
 
 QComboBox QAbstractItemView {
-    background-color: white;
-    border: 1px solid #E8E8E8;
+    background-color: #1A1A1A;
+    border: 1px solid #2A2A2A;
     border-radius: 8px;
-    selection-background-color: #F3F4F6;
-    selection-color: #171717;
+    selection-background-color: #262626;
+    selection-color: #F5F5F5;
+    color: #E5E5E5;
     padding: 4px;
 }
 
@@ -280,15 +285,15 @@ QComboBox QAbstractItemView {
 QCheckBox {
     spacing: 8px;
     font-size: 14px;
-    color: #262626;
+    color: #E5E5E5;
 }
 
 QCheckBox::indicator {
     width: 20px;
     height: 20px;
     border-radius: 6px;
-    border: 2px solid #E8E8E8;
-    background-color: white;
+    border: 2px solid #2A2A2A;
+    background-color: #1A1A1A;
 }
 
 QCheckBox::indicator:hover {
@@ -302,12 +307,21 @@ QCheckBox::indicator:checked {
 
 /* Dialog */
 QDialog {
-    background-color: white;
+    background-color: #1A1A1A;
+}
+
+QDialog QLabel {
+    color: #E5E5E5;
 }
 
 /* MessageBox */
 QMessageBox {
-    background-color: white;
+    background-color: #1A1A1A;
+    color: #E5E5E5;
+}
+
+QMessageBox QLabel {
+    color: #E5E5E5;
 }
 
 QMessageBox QPushButton {
@@ -317,16 +331,21 @@ QMessageBox QPushButton {
 
 /* Progress Dialog */
 QProgressDialog {
-    background-color: white;
+    background-color: #1A1A1A;
+    color: #E5E5E5;
+}
+
+QProgressDialog QLabel {
+    color: #E5E5E5;
 }
 
 QProgressBar {
     border: none;
     border-radius: 8px;
-    background-color: #F3F4F6;
+    background-color: #262626;
     text-align: center;
     font-size: 12px;
-    color: #262626;
+    color: #E5E5E5;
 }
 
 QProgressBar::chunk {
@@ -334,90 +353,30 @@ QProgressBar::chunk {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                                stop:0 #8B5CF6, stop:1 #3B82F6);
 }
-"""
 
-# Colori predefiniti per le materie
-SUBJECT_COLORS = [
-    '#8B5CF6',  # Viola
-    '#3B82F6',  # Blu
-    '#10B981',  # Verde
-    '#F59E0B',  # Arancione
-    '#EF4444',  # Rosso
-    '#EC4899',  # Rosa
-]
-
-DIFFICULTY_COLORS = {
-    'easy': '#10B981',    # Verde
-    'medium': '#F59E0B',  # Arancione
-    'hard': '#EF4444',    # Rosso
+/* EXTRA - Area contenuti centrale */
+QWidget {
+    background-color: #0F0F0F;
+    color: #E5E5E5;
 }
 
+QScrollArea > QWidget > QWidget {
+    background-color: #0F0F0F;
+}
+"""
 
-# Funzioni per gestire i temi
-def get_current_theme():
-    """Ottiene il tema corrente dal database"""
-    try:
-        from database.db_manager import DatabaseManager
-        db = DatabaseManager()
-        theme = db.get_setting('theme', 'light')
-        return theme
-    except:
-        return 'light'  # Default in caso di errore
+# Colori predefiniti per le materie (più luminosi per dark mode)
+SUBJECT_COLORS_DARK = [
+    '#9D6FFF',  # Viola più chiaro
+    '#5B9FFF',  # Blu più chiaro
+    '#34D399',  # Verde più chiaro
+    '#FBBF24',  # Arancione più chiaro
+    '#F87171',  # Rosso più chiaro
+    '#F472B6',  # Rosa più chiaro
+]
 
-
-def get_theme_style():
-    """Restituisce lo stile CSS in base al tema corrente"""
-    theme = get_current_theme()
-    
-    if theme == 'dark':
-        from ui.styles_dark import DARK_STYLE
-        return DARK_STYLE
-    else:
-        return MAIN_STYLE
-
-
-def get_theme_colors():
-    """Restituisce i colori delle materie in base al tema corrente"""
-    theme = get_current_theme()
-    
-    if theme == 'dark':
-        from ui.styles_dark import SUBJECT_COLORS_DARK, DIFFICULTY_COLORS_DARK
-        return SUBJECT_COLORS_DARK, DIFFICULTY_COLORS_DARK
-    else:
-        return SUBJECT_COLORS, DIFFICULTY_COLORS
-
-
-def get_icon_color():
-    """Restituisce il colore delle icone in base al tema"""
-    theme = get_current_theme()
-    return '#FFFFFF' if theme == 'dark' else '#262626'  # Bianco in dark mode
-
-
-def get_text_color():
-    """Restituisce il colore del testo principale in base al tema"""
-    theme = get_current_theme()
-    return '#F5F5F5' if theme == 'dark' else '#171717'  # Bianco in dark mode
-
-
-def get_secondary_text_color():
-    """Restituisce il colore del testo secondario in base al tema"""
-    theme = get_current_theme()
-    return '#B3B3B3' if theme == 'dark' else '#525252'
-
-
-def get_caption_text_color():
-    """Restituisce il colore del testo caption in base al tema"""
-    theme = get_current_theme()
-    return '#8A8A8A' if theme == 'dark' else '#737373'
-
-
-def get_background_color():
-    """Restituisce il colore di sfondo in base al tema"""
-    theme = get_current_theme()
-    return '#0F0F0F' if theme == 'dark' else '#FAFAFA'
-
-
-def get_card_background():
-    """Restituisce il colore di sfondo delle card in base al tema"""
-    theme = get_current_theme()
-    return '#1A1A1A' if theme == 'dark' else 'white'
+DIFFICULTY_COLORS_DARK = {
+    'easy': '#34D399',    # Verde
+    'medium': '#FBBF24',  # Arancione
+    'hard': '#F87171',    # Rosso
+}

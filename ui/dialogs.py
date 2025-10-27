@@ -1,10 +1,12 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QLineEdit, QTextEdit, QComboBox,
-                             QMessageBox)
-from PyQt6.QtCore import Qt
+                             QMessageBox, QCheckBox)
+from PyQt6.QtCore import Qt, pyqtSignal # AGGIUNTO: pyqtSignal per l'hot reload
 from PyQt6.QtGui import QColor
 from database.db_manager import DatabaseManager
-from ui.styles import SUBJECT_COLORS
+# AGGIORNATO: Importa tutte le funzioni di stile necessarie
+from ui.styles import (SUBJECT_COLORS, get_text_color, get_secondary_text_color, 
+                       get_caption_text_color, get_card_background, get_icon_color)
 from ui.icons import IconProvider
 import os
 
@@ -44,17 +46,19 @@ class CreateSubjectDialog(QDialog):
     def create_header(self, parent_layout):
         """Crea l'intestazione del dialog"""
         title = QLabel("Crea Nuova Materia")
-        title.setStyleSheet("""
+        # USA TEMA
+        title.setStyleSheet(f"""
             font-size: 22px; 
             font-weight: 700; 
-            color: #171717;
+            color: {get_text_color()};
         """)
         parent_layout.addWidget(title)
         
         subtitle = QLabel("Organizza il tuo studio creando una nuova materia")
-        subtitle.setStyleSheet("""
+        # USA TEMA
+        subtitle.setStyleSheet(f"""
             font-size: 13px; 
-            color: #737373;
+            color: {get_caption_text_color()};
         """)
         subtitle.setWordWrap(True)
         parent_layout.addWidget(subtitle)
@@ -63,61 +67,44 @@ class CreateSubjectDialog(QDialog):
         """Crea i campi del form"""
         # Nome materia
         name_label = QLabel("Nome Materia *")
-        name_label.setStyleSheet("""
+        # USA TEMA
+        name_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(name_label)
         
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("es. Matematica, Storia, Biologia...")
         self.name_input.setMinimumHeight(44)
-        self.name_input.setStyleSheet("""
-            QLineEdit {
-                padding: 0 12px;
-                border: 2px solid #E5E5E5;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border-color: #8B5CF6;
-            }
-        """)
+        # RIMOSSO STILE HARDCODATO, usa styles.py
         parent_layout.addWidget(self.name_input)
         
         # Descrizione
         desc_label = QLabel("Descrizione (opzionale)")
-        desc_label.setStyleSheet("""
+        # USA TEMA
+        desc_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(desc_label)
         
         self.desc_input = QTextEdit()
         self.desc_input.setPlaceholderText("Aggiungi una breve descrizione...")
         self.desc_input.setFixedHeight(90)
-        self.desc_input.setStyleSheet("""
-            QTextEdit {
-                padding: 12px;
-                border: 2px solid #E5E5E5;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-            QTextEdit:focus {
-                border-color: #8B5CF6;
-            }
-        """)
+        # RIMOSSO STILE HARDCODATO, usa styles.py
         parent_layout.addWidget(self.desc_input)
     
     def create_color_picker(self, parent_layout):
         """Crea il selettore di colore"""
         color_label = QLabel("Colore")
-        color_label.setStyleSheet("""
+        # USA TEMA
+        color_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(color_label)
         
@@ -152,11 +139,15 @@ class CreateSubjectDialog(QDialog):
         """Aggiorna lo stile del pulsante colore"""
         color = button.property("color")
         
+        # USA TEMA
+        # Se il tema è light (get_text_color() == #171717) usa bordo nero, altrimenti bianco
+        border_color = '#171717' if get_text_color() == '#171717' else '#E5E5E5' 
+        
         if selected:
             button.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {color};
-                    border: 3px solid #171717;
+                    border: 3px solid {border_color};
                     border-radius: 12px;
                 }}
             """)
@@ -168,7 +159,7 @@ class CreateSubjectDialog(QDialog):
                     border-radius: 12px;
                 }}
                 QPushButton:hover {{
-                    border-color: #D4D4D4;
+                    border-color: {get_caption_text_color()}50;
                 }}
             """)
     
@@ -232,14 +223,18 @@ class CreateSubjectDialog(QDialog):
 class SettingsDialog(QDialog):
     """Dialog per le impostazioni (API Key)"""
     
+    # Segnale per notificare il cambio tema alla MainWindow
+    theme_changed = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.db = DatabaseManager()
         self.setup_ui()
         self.load_settings()
     
     def setup_ui(self):
         self.setWindowTitle("Impostazioni")
-        self.setFixedSize(600, 520)
+        self.setFixedSize(600, 680)
         self.setModal(True)
         
         layout = QVBoxLayout(self)
@@ -248,6 +243,9 @@ class SettingsDialog(QDialog):
         
         # Header
         self.create_header(layout)
+        
+        # Theme section
+        self.create_theme_section(layout)
         
         # API Key section
         self.create_api_key_section(layout)
@@ -261,9 +259,10 @@ class SettingsDialog(QDialog):
         """Crea l'intestazione del dialog"""
         header_layout = QHBoxLayout()
         
-        # Icona
+        # Icona - Usa colore primario hardcodato
+        primary_color = '#8B5CF6'
         icon_label = QLabel()
-        IconProvider.setup_icon_label(icon_label, 'settings', 32, '#8B5CF6')
+        IconProvider.setup_icon_label(icon_label, 'settings', 32, primary_color)
         header_layout.addWidget(icon_label)
         
         # Titoli
@@ -271,17 +270,19 @@ class SettingsDialog(QDialog):
         text_layout.setSpacing(4)
         
         title = QLabel("Impostazioni")
-        title.setStyleSheet("""
+        # USA TEMA
+        title.setStyleSheet(f"""
             font-size: 22px; 
             font-weight: 700; 
-            color: #171717;
+            color: {get_text_color()};
         """)
         text_layout.addWidget(title)
         
         subtitle = QLabel("Configura l'API Key di Google Gemini per abilitare le funzionalità AI")
-        subtitle.setStyleSheet("""
+        # USA TEMA
+        subtitle.setStyleSheet(f"""
             font-size: 13px; 
-            color: #737373;
+            color: {get_caption_text_color()};
         """)
         subtitle.setWordWrap(True)
         text_layout.addWidget(subtitle)
@@ -289,26 +290,82 @@ class SettingsDialog(QDialog):
         header_layout.addLayout(text_layout)
         parent_layout.addLayout(header_layout)
     
+    
+    def create_theme_section(self, parent_layout):
+        """Crea la sezione tema"""
+        # Separatore - USA TEMA
+        separator = QLabel()
+        separator.setStyleSheet(f"""
+            QLabel {{
+                background-color: {get_caption_text_color()}50; 
+                max-height: 1px;
+                margin: 8px 0;
+            }}
+        """)
+        parent_layout.addWidget(separator)
+        
+        # Label
+        theme_label = QLabel("Tema Interfaccia")
+        # USA TEMA
+        theme_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_secondary_text_color()};
+        """)
+        parent_layout.addWidget(theme_label)
+        
+        # Toggle dark mode
+        theme_layout = QHBoxLayout()
+        theme_layout.setSpacing(12)
+        
+        theme_desc = QLabel("Dark Mode")
+        # USA TEMA
+        theme_desc.setStyleSheet(f"""
+            font-size: 14px;
+            color: {get_secondary_text_color()};
+        """)
+        theme_layout.addWidget(theme_desc)
+        
+        theme_layout.addStretch()
+        
+        self.dark_mode_checkbox = QCheckBox()
+        theme_layout.addWidget(self.dark_mode_checkbox)
+        
+        parent_layout.addLayout(theme_layout)
+        
+        # Nota - Testo aggiornato per l'hot reload!
+        theme_note = QLabel("Il tema verrà applicato **immediatamente** al salvataggio. (Riavvio non necessario)") 
+        # USA TEMA
+        theme_note.setStyleSheet(f"""
+            font-size: 12px;
+            color: {get_caption_text_color()};
+            padding: 4px 0;
+        """)
+        parent_layout.addWidget(theme_note)
+    
     def create_api_key_section(self, parent_layout):
         """Crea la sezione API Key"""
         # Label
         api_label = QLabel("Google Gemini API Key *")
-        api_label.setStyleSheet("""
+        # USA TEMA
+        api_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(api_label)
         
         # Link per ottenere API key
         link_label = QLabel(
-            '<a href="https://makersuite.google.com/app/apikey" '
-            'style="color: #8B5CF6; text-decoration: none;">'
-            'Ottieni la tua API key</a>'
+            f'<a href="https://makersuite.google.com/app/apikey" '
+            f'style="color: #8B5CF6; text-decoration: none;">'
+            f'Ottieni la tua API key</a>'
         )
         link_label.setOpenExternalLinks(True)
-        link_label.setStyleSheet("""
+        # USA TEMA
+        link_label.setStyleSheet(f"""
             font-size: 13px;
+            color: {get_caption_text_color()};
             padding: 4px 0;
         """)
         parent_layout.addWidget(link_label)
@@ -321,22 +378,13 @@ class SettingsDialog(QDialog):
         self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.api_input.setPlaceholderText("Inserisci la tua API key...")
         self.api_input.setMinimumHeight(44)
-        self.api_input.setStyleSheet("""
-            QLineEdit {
-                padding: 0 12px;
-                border: 2px solid #E5E5E5;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-            QLineEdit:focus {
-                border-color: #8B5CF6;
-            }
-        """)
+        # RIMOSSO STILE HARDCODATO, usa styles.py
         input_layout.addWidget(self.api_input)
         
         # Pulsante mostra/nascondi
         self.show_btn = QPushButton()
-        self.show_btn.setIcon(IconProvider.get_icon('eye', 16, '#262626'))
+        # USA TEMA per l'icona
+        self.show_btn.setIcon(IconProvider.get_icon('eye', 16, get_icon_color()))
         self.show_btn.setProperty("class", "secondary")
         self.show_btn.setFixedWidth(100)
         self.show_btn.setMinimumHeight(44)
@@ -346,21 +394,28 @@ class SettingsDialog(QDialog):
         parent_layout.addLayout(input_layout)
         
         # Nota informativa
+        # USA TEMA
         info_label = QLabel(
             "<b>Nota sulla sicurezza:</b> La tua API key viene salvata localmente "
             "sul tuo computer e non viene mai inviata a server esterni. "
             "Viene utilizzata solo per comunicare direttamente con Google Gemini."
         )
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("""
-            QLabel {
-                background-color: #F3F4F6;
-                border-left: 4px solid #8B5CF6;
+
+        # Colori per il riquadro informativo (adattabili al tema)
+        info_bg = '#F3F4F6' if get_card_background() == 'white' else '#262626'
+        info_border = '#8B5CF6'
+        info_text = get_secondary_text_color()
+        
+        info_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: {info_bg};
+                border-left: 4px solid {info_border};
                 border-radius: 8px;
                 padding: 12px 16px;
                 font-size: 12px;
-                color: #525252;
-            }
+                color: {info_text};
+            }}
         """)
         parent_layout.addWidget(info_label)
     
@@ -390,17 +445,27 @@ class SettingsDialog(QDialog):
     
     def toggle_api_visibility(self):
         """Toggle della visibilità dell'API key"""
+        # USA TEMA per l'icona
+        icon_color = get_icon_color()
+
         if self.api_input.echoMode() == QLineEdit.EchoMode.Password:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Normal)
             self.show_btn.setText("")
-            self.show_btn.setIcon(IconProvider.get_icon('eye-slash', 16, '#262626'))
+            self.show_btn.setIcon(IconProvider.get_icon('eye-slash', 16, icon_color))
         else:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.show_btn.setText("")
-            self.show_btn.setIcon(IconProvider.get_icon('eye', 16, '#262626'))
+            self.show_btn.setIcon(IconProvider.get_icon('eye', 16, icon_color))
     
     def load_settings(self):
         """Carica le impostazioni salvate"""
+        # Carica tema dal database
+        try:
+            theme = self.db.get_setting('theme', 'light')
+            self.dark_mode_checkbox.setChecked(theme == 'dark')
+        except:
+            pass
+        
         # Cerca prima nell'ambiente
         api_key = os.environ.get('GEMINI_API_KEY', '')
         
@@ -421,6 +486,16 @@ class SettingsDialog(QDialog):
     
     def save_settings(self):
         """Salva le impostazioni"""
+        
+        # Salva tema nel database PRIMA del messaggio di successo
+        old_theme = self.db.get_setting('theme', 'light')
+        new_theme = 'dark' if self.dark_mode_checkbox.isChecked() else 'light'
+        
+        try:
+            self.db.set_setting('theme', new_theme)
+        except Exception as e:
+            print(f"Errore salvataggio tema: {e}")
+        
         api_key = self.api_input.text().strip()
         
         if not api_key:
@@ -441,10 +516,8 @@ class SettingsDialog(QDialog):
             )
             return
         
-        # Salva nell'ambiente
+        # Salva nell'ambiente e nel .env (invariato)
         os.environ['GEMINI_API_KEY'] = api_key
-        
-        # Salva in un file .env locale
         try:
             with open('.env', 'w', encoding='utf-8') as f:
                 f.write(f'GEMINI_API_KEY={api_key}\n')
@@ -456,6 +529,10 @@ class SettingsDialog(QDialog):
                 "L'API key è stata salvata solo per questa sessione."
             )
         
+        # Emette il segnale per l'hot reload del tema
+        if old_theme != new_theme:
+            self.theme_changed.emit()
+
         QMessageBox.information(
             self, 
             "Successo", 
@@ -498,7 +575,7 @@ class EditFlashcardDialog(QDialog):
         """Crea l'intestazione del dialog"""
         header_layout = QHBoxLayout()
         
-        # Icona
+        # Icona - Usa colore primario hardcodato
         icon_label = QLabel()
         IconProvider.setup_icon_label(icon_label, 'edit', 28, '#8B5CF6')
         header_layout.addWidget(icon_label)
@@ -508,17 +585,19 @@ class EditFlashcardDialog(QDialog):
         text_layout.setSpacing(4)
         
         title = QLabel("Modifica Flashcard")
-        title.setStyleSheet("""
+        # USA TEMA
+        title.setStyleSheet(f"""
             font-size: 22px; 
             font-weight: 700; 
-            color: #171717;
+            color: {get_text_color()};
         """)
         text_layout.addWidget(title)
         
         subtitle = QLabel("Modifica il contenuto e la difficoltà della flashcard")
-        subtitle.setStyleSheet("""
+        # USA TEMA
+        subtitle.setStyleSheet(f"""
             font-size: 13px; 
-            color: #737373;
+            color: {get_caption_text_color()};
         """)
         text_layout.addWidget(subtitle)
         
@@ -529,60 +608,43 @@ class EditFlashcardDialog(QDialog):
         """Crea i campi del form"""
         # Domanda (fronte)
         front_label = QLabel("Domanda (Fronte)")
-        front_label.setStyleSheet("""
+        # USA TEMA
+        front_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(front_label)
         
         self.front_input = QTextEdit()
         self.front_input.setPlainText(self.flashcard_data['front'])
         self.front_input.setFixedHeight(120)
-        self.front_input.setStyleSheet("""
-            QTextEdit {
-                padding: 12px;
-                border: 2px solid #E5E5E5;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-            QTextEdit:focus {
-                border-color: #8B5CF6;
-            }
-        """)
+        # RIMOSSO STILE HARDCODATO, usa styles.py
         parent_layout.addWidget(self.front_input)
         
         # Risposta (retro)
         back_label = QLabel("Risposta (Retro)")
-        back_label.setStyleSheet("""
+        # USA TEMA
+        back_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(back_label)
         
         self.back_input = QTextEdit()
         self.back_input.setPlainText(self.flashcard_data['back'])
         self.back_input.setFixedHeight(140)
-        self.back_input.setStyleSheet("""
-            QTextEdit {
-                padding: 12px;
-                border: 2px solid #E5E5E5;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-            QTextEdit:focus {
-                border-color: #8B5CF6;
-            }
-        """)
+        # RIMOSSO STILE HARDCODATO, usa styles.py
         parent_layout.addWidget(self.back_input)
         
         # Difficoltà
         diff_label = QLabel("Difficoltà")
-        diff_label.setStyleSheet("""
+        # USA TEMA
+        diff_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
-            color: #262626;
+            color: {get_secondary_text_color()};
         """)
         parent_layout.addWidget(diff_label)
         
@@ -604,28 +666,7 @@ class EditFlashcardDialog(QDialog):
         self.diff_combo.setCurrentText(mapped_difficulty)
         
         self.diff_combo.setMinimumHeight(44)
-        self.diff_combo.setStyleSheet("""
-            QComboBox {
-                padding: 0 12px;
-                border: 2px solid #E5E5E5;
-                border-radius: 8px;
-                font-size: 14px;
-            }
-            QComboBox:focus {
-                border-color: #8B5CF6;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 30px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #737373;
-                margin-right: 10px;
-            }
-        """)
+        # RIMOSSO STILE HARDCODATO, usa styles.py
         parent_layout.addWidget(self.diff_combo)
     
     def create_action_buttons(self, parent_layout):

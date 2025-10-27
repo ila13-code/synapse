@@ -69,4 +69,39 @@ class FileService:
         elif bytes_size < 1024 * 1024:
             return f"{bytes_size / 1024:.1f} KB"
         else:
-            return f"{bytes_size / (1024 * 1024):.1f} MB"
+            return f"{bytes_size / (1024 * 1024):.1f} MB"    
+    @staticmethod
+    def save_document(file_path: str, subject_id: int) -> int:
+        """Salva un documento nel database"""
+        from database.db_manager import DatabaseManager
+        from pathlib import Path
+        
+        try:
+            # Estrai informazioni dal file
+            file_name = Path(file_path).name
+            file_type = FileService.get_file_type(file_path)
+            file_size = FileService.get_file_size(file_path)
+            
+            # Estrai il contenuto testuale
+            try:
+                content = FileService.extract_text(file_path)
+            except Exception as e:
+                # Se l'estrazione fallisce, salva comunque il file senza contenuto
+                content = None
+                print(f"Avviso: impossibile estrarre testo da {file_name}: {e}")
+            
+            # Salva nel database
+            db = DatabaseManager()
+            doc_id = db.create_document(
+                subject_id=subject_id,
+                name=file_name,
+                file_path=file_path,
+                file_type=file_type,
+                content=content,
+                size_bytes=file_size
+            )
+            
+            return doc_id
+            
+        except Exception as e:
+            raise Exception(f"Errore nel salvataggio del documento: {e}")
