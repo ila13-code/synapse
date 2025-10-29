@@ -1,6 +1,7 @@
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QTextOption
 from database.db_manager import DatabaseManager
+from services.ai_ollama_service import OllamaAIService
 from services.file_service import FileService
 from services.ai_service import AIService
 from services.export_service import ExportService
@@ -727,7 +728,7 @@ class SubjectWindow(QMainWindow):
     
     # ==================== GENERAZIONE FLASHCARD ====================
     
-    def generate_flashcards(self):
+    def generate_flashcards(self,ollama: bool = True):
         """Avvia la generazione delle flashcard"""
         documents = self.db.get_documents_by_subject(self.subject_data['id'])
         
@@ -773,28 +774,33 @@ class SubjectWindow(QMainWindow):
         
         # Ottieni API key
         import os
-        api_key = os.environ.get('GEMINI_API_KEY', '')
+
+        if ollama:
+            ai_service = OllamaAIService()
+        else:
+            api_key = os.environ.get('GEMINI_API_KEY', '')
         
-        # Se non c'è nell'ambiente, prova a leggere da .env
-        if not api_key:
-            try:
-                with open('.env', 'r', encoding='utf-8') as f:
-                    for line in f:
-                        if line.startswith('GEMINI_API_KEY='):
-                            api_key = line.split('=', 1)[1].strip()
-                            break
-            except FileNotFoundError:
-                pass
+            # Se non c'è nell'ambiente, prova a leggere da .env
+            if not api_key:
+                try:
+                    with open('.env', 'r', encoding='utf-8') as f:
+                        for line in f:
+                            if line.startswith('GEMINI_API_KEY='):
+                                api_key = line.split('=', 1)[1].strip()
+                                break
+                except FileNotFoundError:
+                    pass
+            
+            if not api_key:
+                QMessageBox.warning(
+                    self,
+                    "API Key Mancante",
+                    "Configura l'API Key di Google Gemini nelle Impostazioni prima di generare flashcard"
+                )
+                return
+            
+            ai_service = AIService(api_key)
         
-        if not api_key:
-            QMessageBox.warning(
-                self,
-                "API Key Mancante",
-                "Configura l'API Key di Google Gemini nelle Impostazioni prima di generare flashcard"
-            )
-            return
-        
-        ai_service = AIService(api_key)
         
         self.generation_thread = GenerationThread(
             ai_service,
