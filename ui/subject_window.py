@@ -728,7 +728,7 @@ class SubjectWindow(QMainWindow):
     
     # ==================== GENERAZIONE FLASHCARD ====================
     
-    def generate_flashcards(self,ollama: bool = True):
+    def generate_flashcards(self):
         """Avvia la generazione delle flashcard"""
         documents = self.db.get_documents_by_subject(self.subject_data['id'])
         
@@ -774,7 +774,7 @@ class SubjectWindow(QMainWindow):
         
         # Ottieni API key
         import os
-
+        ollama = True
         if ollama:
             ai_service = OllamaAIService()
         else:
