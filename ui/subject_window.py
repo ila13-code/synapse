@@ -5,41 +5,57 @@ from services.ai_ollama_service import OllamaAIService
 from services.file_service import FileService
 from services.ai_service import AIService
 from services.export_service import ExportService
-# Importa le funzioni tema
+from services.reflection_exec import ReflectionExecutor  # <-- IMPORTA QUI
 from ui.styles import (get_theme_style, get_text_color, get_secondary_text_color, 
                        get_caption_text_color, get_icon_color, get_card_background, 
                        get_theme_colors) 
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLabel, QPushButton, QTabWidget, QFileDialog,
                              QScrollArea, QFrame, QGridLayout, QMessageBox,
-                             QProgressDialog, QCheckBox,QTextEdit)
+                             QProgressDialog, QCheckBox, QTextEdit, QComboBox)
 from ui.dialogs import EditFlashcardDialog
 from ui.icons import IconProvider
 import os
+
 
 class GenerationThread(QThread):
     """Thread per generare flashcard senza bloccare l'UI"""
     finished = pyqtSignal(list)
     error = pyqtSignal(str)
     
-    def __init__(self, ai_service, content, num_cards=10, use_web_search=False):
+    def __init__(self, ai_service, content, num_cards=10, use_web_search=False, use_reflection=False):
         super().__init__()
         self.ai_service = ai_service
         self.content = content
         self.num_cards = num_cards
         self.use_web_search = use_web_search
+        self.use_reflection = use_reflection  # <-- NUOVO PARAMETRO
     
     def run(self):
         try:
-            flashcards = self.ai_service.generate_flashcards(
-                self.content, 
-                self.num_cards,
-                self.use_web_search
-            )
+            if self.use_reflection:
+                # USA REFLECTION EXECUTOR
+                executor = ReflectionExecutor(
+                    ai_service=self.ai_service,
+                    max_iterations=3,
+                    quality_threshold=90.0
+                )
+                flashcards = executor.run(
+                    content=self.content,
+                    num_cards=self.num_cards,
+                    use_web_search=self.use_web_search
+                )
+            else:
+                # GENERAZIONE DIRETTA (metodo classico)
+                flashcards = self.ai_service.generate_flashcards(
+                    self.content, 
+                    self.num_cards,
+                    self.use_web_search
+                )
+            
             self.finished.emit(flashcards)
         except Exception as e:
             self.error.emit(str(e))
-
 
 class SubjectWindow(QMainWindow):
     def __init__(self, subject_data, parent=None):  
@@ -57,6 +73,7 @@ class SubjectWindow(QMainWindow):
         """Converte un colore hex in rgba con opacità specificata"""
         color = QColor(hex_color)
         return f"rgba({color.red()}, {color.green()}, {color.blue()}, {opacity})"
+    
         
     def setup_ui(self):
         self.setWindowTitle(f"Synapse - {self.subject_data['name']}")
@@ -347,12 +364,12 @@ class SubjectWindow(QMainWindow):
         gen_layout.setContentsMargins(40, 40, 40, 40)
         gen_layout.setSpacing(24)
         
-        # Icona principale (NON OMESSA)
+        # Icona principale
         icon_label = QLabel()
         IconProvider.setup_icon_label(icon_label, "sparkles", 64, "#8B5CF6")
         gen_layout.addWidget(icon_label)
         
-        # Titolo (NON OMESSO)
+        # Titolo
         title_label = QLabel("Genera Flashcard con AI")
         title_label.setStyleSheet(f"""
             font-size: 24px; 
@@ -362,7 +379,7 @@ class SubjectWindow(QMainWindow):
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         gen_layout.addWidget(title_label)
         
-        # Descrizione (NON OMESSA)
+        # Descrizione
         desc_label = QLabel(
             "L'AI analizzerà i tuoi documenti e creerà flashcard "
             "ottimizzate per il tuo apprendimento"
@@ -375,11 +392,10 @@ class SubjectWindow(QMainWindow):
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         gen_layout.addWidget(desc_label)
         
-        # Statistiche documenti - CORREZIONE QUI
+        # Statistiche documenti
         primary_color = '#8B5CF6'
         doc_bg = get_card_background()
         
-        # Usa un background coerente con il tema (doc_bg) e un bordo colorato.
         self.doc_count_label = QLabel("Documenti disponibili: 0")
         self.doc_count_label.setStyleSheet(f"""
             font-size: 16px;
@@ -393,11 +409,19 @@ class SubjectWindow(QMainWindow):
         self.doc_count_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         gen_layout.addWidget(self.doc_count_label)
         
+        # ========== NUOVO: SELEZIONE MODELLO AI ========== #
+        model_frame = self.create_model_selection()
+        gen_layout.addWidget(model_frame)
+        
+        # ========== NUOVO: OPZIONE REFLECTION ========== #
+        reflection_frame = self.create_reflection_option()
+        gen_layout.addWidget(reflection_frame)
+        
         # Opzione ricerca web
         web_search_frame = self.create_web_search_option()
         gen_layout.addWidget(web_search_frame)
         
-        # Pulsante genera (NON OMESSO)
+        # Pulsante genera
         generate_btn = QPushButton(" Genera Flashcard")
         generate_btn.setIcon(IconProvider.get_icon("sparkles", 18, "#FFFFFF"))
         generate_btn.setProperty("class", "primary")
@@ -409,10 +433,147 @@ class SubjectWindow(QMainWindow):
         
         return widget
     
+    def create_model_selection(self):
+        """Crea il frame per la selezione del modello AI"""
+        frame = QFrame()
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {get_card_background()};
+                border: 1px solid {get_caption_text_color()}30;
+                border-radius: 12px;
+            }}
+        """)
+        
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
+        
+        # Icona AI
+        ai_icon = QLabel()
+        IconProvider.setup_icon_label(ai_icon, "sparkles", 24, "#8B5CF6")
+        layout.addWidget(ai_icon)
+        
+        # Testo descrizione
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        
+        title = QLabel("Modello AI")
+        title.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+            background-color: transparent;
+            border: none;
+        """)
+        text_layout.addWidget(title)
+        
+        desc = QLabel("Scegli il modello per generare le flashcards")
+        desc.setStyleSheet(f"""
+            font-size: 12px; 
+            color: {get_caption_text_color()};
+            background-color: transparent;
+            border: none;
+        """)
+        text_layout.addWidget(desc)
+        
+        layout.addLayout(text_layout)
+        layout.addStretch()
+        
+        # Dropdown modelli
+        self.model_combo = QComboBox()
+        self.model_combo.addItems([
+            "Ollama - llama3:8b",
+            "Ollama - phi3:mini",
+            "Ollama - phi3",
+            "Ollama - gemma2:2b",
+            "Gemini (richiede API key)"
+        ])
+        self.model_combo.setFixedWidth(220)
+        self.model_combo.setStyleSheet(f"""
+            QComboBox {{
+                padding: 8px 12px;
+                border: 1px solid {get_caption_text_color()}30;
+                border-radius: 8px;
+                background-color: {get_card_background()};
+                color: {get_text_color()};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid {get_icon_color()};
+            }}
+        """)
+        layout.addWidget(self.model_combo)
+        
+        return frame
+    
+    def create_reflection_option(self):
+        """Crea il frame per l'opzione Reflection"""
+        frame = QFrame()
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {get_card_background()};
+                border: 1px solid {get_caption_text_color()}30;
+                border-radius: 12px;
+            }}
+        """)
+        
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(12)
+        
+        # Icona reflection (ciclo)
+        reflection_icon = QLabel()
+        IconProvider.setup_icon_label(reflection_icon, "refresh", 24, "#10B981")
+        layout.addWidget(reflection_icon)
+        
+        # Testo descrizione
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        
+        title = QLabel("Modalità Reflection 🔥")
+        title.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+            background-color: transparent;
+            border: none;
+        """)
+        text_layout.addWidget(title)
+        
+        desc = QLabel("L'AI migliora iterativamente la qualità delle flashcards (più lento ma migliore)")
+        desc.setWordWrap(True)
+        desc.setStyleSheet(f"""
+            font-size: 12px; 
+            color: {get_caption_text_color()};
+            background-color: transparent;
+            border: none;
+        """)
+        text_layout.addWidget(desc)
+        
+        layout.addLayout(text_layout)
+        layout.addStretch()
+        
+        # Checkbox
+        self.reflection_checkbox = QCheckBox()
+        self.reflection_checkbox.setChecked(False)  # Default: OFF
+        self.reflection_checkbox.setStyleSheet("""
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+            }
+        """)
+        layout.addWidget(self.reflection_checkbox)
+        
+        return frame
+    
     def create_web_search_option(self):
         """Crea il frame per l'opzione di ricerca web"""
         frame = QFrame()
-        # Stile corretto per lo sfondo e il bordo
         frame.setStyleSheet(f"""
             QFrame {{
                 background-color: {get_card_background()};
@@ -441,7 +602,6 @@ class SubjectWindow(QMainWindow):
             color: {get_text_color()};
             background-color: transparent;
             border: none;
-            outline: none;
         """)
         text_layout.addWidget(title)
         
@@ -451,7 +611,6 @@ class SubjectWindow(QMainWindow):
             color: {get_caption_text_color()};
             background-color: transparent;
             border: none;
-            outline: none;
         """)
         text_layout.addWidget(desc)
         
@@ -757,30 +916,12 @@ class SubjectWindow(QMainWindow):
         # Combina il contenuto
         combined_content = "\n\n".join(all_content)
         
-        # Mostra progress dialog
-        progress = QProgressDialog(
-            "Generazione flashcard in corso...", 
-            "Annulla", 
-            0, 
-            0, 
-            self
-        )
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
+        # ========== SELEZIONE MODELLO ========== #
+        selected_model = self.model_combo.currentText()
         
-        # Avvia il thread di generazione
-        use_web_search = self.web_search_checkbox.isChecked()
-        
-        # Ottieni API key
-        import os
-        ollama = True
-        if ollama:
-            ai_service = OllamaAIService()
-        else:
+        if "Gemini" in selected_model:
+            # Usa Gemini
             api_key = os.environ.get('GEMINI_API_KEY', '')
-        
-            # Se non c'è nell'ambiente, prova a leggere da .env
             if not api_key:
                 try:
                     with open('.env', 'r', encoding='utf-8') as f:
@@ -795,18 +936,46 @@ class SubjectWindow(QMainWindow):
                 QMessageBox.warning(
                     self,
                     "API Key Mancante",
-                    "Configura l'API Key di Google Gemini nelle Impostazioni prima di generare flashcard"
+                    "Configura l'API Key di Google Gemini nelle Impostazioni"
                 )
                 return
             
             ai_service = AIService(api_key)
+        else:
+            # Usa Ollama - estrai il nome del modello
+            model_name = selected_model.split(" - ")[1]
+            ai_service = OllamaAIService(model_name=model_name)
         
+        # ========== PARAMETRI GENERAZIONE ========== #
+        use_web_search = self.web_search_checkbox.isChecked()
+        use_reflection = self.reflection_checkbox.isChecked()
         
+        # Mostra progress dialog
+        progress_text = (
+            "Generazione flashcard con Reflection in corso...\n"
+            "Questo può richiedere alcuni minuti."
+            if use_reflection else
+            "Generazione flashcard in corso..."
+        )
+        
+        progress = QProgressDialog(
+            progress_text, 
+            "Annulla", 
+            0, 
+            0, 
+            self
+        )
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        
+        # Avvia il thread di generazione
         self.generation_thread = GenerationThread(
             ai_service,
             combined_content,
             num_cards=10,
-            use_web_search=use_web_search
+            use_web_search=use_web_search,
+            use_reflection=use_reflection  # <-- PASSA IL PARAMETRO
         )
         
         self.generation_thread.finished.connect(
