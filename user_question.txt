@@ -1,0 +1,1 @@
+Quali sono le principali differenze tra database NoSQL e database relazionali tradizionali?
