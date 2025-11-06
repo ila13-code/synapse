@@ -375,6 +375,8 @@ class SubjectWindow(QMainWindow):
         self.current_flashcard_index = 0
         self.is_flipped = False
         self.flashcards = []
+        # Mantieni i thread di upload per evitare che vengano garbage-collected
+        self.upload_threads = []
         self.setup_ui()
         self.load_data()
         self.load_test_query()  # Carica automaticamente la query di test
@@ -465,9 +467,68 @@ class SubjectWindow(QMainWindow):
         card.setStyleSheet(get_upload_card_style(theme))
         card.setFixedHeight(220)  # Aumentato da 180 a 220
         
+        # Abilita drag & drop sul widget della card con handler sicuri
         card.setAcceptDrops(True)
-        card.dragEnterEvent = self.dragEnterEvent
-        card.dropEvent = self.dropEvent
+
+        def card_dragEnterEvent(w, event):
+            try:
+                md = event.mimeData()
+                # Accetta solo se contiene URL locali con estensione supportata
+                if md and md.hasUrls():
+                    urls = [u for u in md.urls() if u.isLocalFile()]
+                    for u in urls:
+                        path = u.toLocalFile()
+                        if path and os.path.isfile(path) and path.lower().endswith((".pdf", ".txt")):
+                            event.acceptProposedAction()
+                            return
+                event.ignore()
+            except Exception:
+                # In caso di qualunque errore, non far crashare l'app
+                event.ignore()
+
+        def card_dropEvent(w, event):
+            try:
+                md = event.mimeData()
+                if not (md and md.hasUrls()):
+                    event.ignore()
+                    return
+
+                urls = md.urls() or []
+                files = []
+                for u in urls:
+                    try:
+                        if not u.isLocalFile():
+                            continue
+                        path = u.toLocalFile()
+                        if not path:
+                            continue
+                        if not os.path.isfile(path):
+                            continue
+                        if path.lower().endswith((".pdf", ".txt")):
+                            files.append(path)
+                    except Exception:
+                        continue
+
+                if not files:
+                    QMessageBox.warning(
+                        self,
+                        "File non validi",
+                        "Sono supportati solo file PDF e TXT"
+                    )
+                    event.ignore()
+                    return
+
+                event.acceptProposedAction()
+                for fp in files:
+                    self._process_uploaded_file(fp)
+            except Exception as e:
+                # Mostra un messaggio invece di crashare
+                QMessageBox.critical(self, "Errore", f"Errore durante il drop dei file: {e}")
+                event.ignore()
+
+        # Collega gli handler locali alla card
+        card.dragEnterEvent = card_dragEnterEvent
+        card.dropEvent = card_dropEvent
         
         layout = QVBoxLayout(card)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -825,44 +886,54 @@ class SubjectWindow(QMainWindow):
         options = QFileDialog.Options()
         # Usa il dialog Qt (non nativo) in modo che rispetti gli stylesheet dell'app
         options |= QFileDialog.Option.DontUseNativeDialog
-        file_path, _ = QFileDialog.getOpenFileName(
+        file_paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Seleziona Documento",
+            "Seleziona Documenti",
             "",
             "Documenti (*.txt *.pdf)",
             options=options
         )
-        
-        if not file_path:
+
+        if not file_paths:
             return
-        
-        self._process_uploaded_file(file_path)
+
+        for file_path in file_paths:
+            if file_path and os.path.isfile(file_path):
+                self._process_uploaded_file(file_path)
     
+    # I metodi globali di drag/drop non sono più collegati direttamente al widget,
+    # ma lasciamoli come fallback generici (non usati dalla card)
     def dragEnterEvent(self, event):
-        """Gestisce l'evento di trascinamento file"""
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-        else:
+        try:
+            if event.mimeData() and event.mimeData().hasUrls():
+                event.acceptProposedAction()
+            else:
+                event.ignore()
+        except Exception:
             event.ignore()
-    
+
     def dropEvent(self, event):
-        """Gestisce il rilascio dei file trascinati"""
-        files = [url.toLocalFile() for url in event.mimeData().urls()]
-        
-        # Filtra solo file PDF e TXT
-        valid_files = [f for f in files if f.lower().endswith(('.pdf', '.txt'))]
-        
-        if not valid_files:
-            QMessageBox.warning(
-                self,
-                "File non validi",
-                "Sono supportati solo file PDF e TXT"
-            )
-            return
-        
-        # Processa tutti i file validi
-        for file_path in valid_files:
-            self._process_uploaded_file(file_path)
+        try:
+            md = event.mimeData()
+            if not (md and md.hasUrls()):
+                event.ignore()
+                return
+            files = []
+            for u in md.urls() or []:
+                if u.isLocalFile():
+                    p = u.toLocalFile()
+                    if p and os.path.isfile(p) and p.lower().endswith((".pdf", ".txt")):
+                        files.append(p)
+            if not files:
+                QMessageBox.warning(self, "File non validi", "Sono supportati solo file PDF e TXT")
+                event.ignore()
+                return
+            event.acceptProposedAction()
+            for fp in files:
+                self._process_uploaded_file(fp)
+        except Exception as e:
+            QMessageBox.critical(self, "Errore", f"Errore durante il drop dei file: {e}")
+            event.ignore()
     
     def _process_uploaded_file(self, file_path):
         """Processa un singolo file caricato in background con feedback visivo"""
@@ -876,7 +947,7 @@ class SubjectWindow(QMainWindow):
         loading.show()
         
         # Crea e avvia thread
-        self.upload_thread = DocumentUploadThread(
+        upload_thread = DocumentUploadThread(
             file_path,
             self.subject_data['id'],
             self.subject_data['name'],
@@ -886,11 +957,21 @@ class SubjectWindow(QMainWindow):
         )
         
         # Connetti i segnali
-        self.upload_thread.finished.connect(
-            lambda success, msg: self._on_upload_finished(success, msg, loading)
-        )
-        
-        self.upload_thread.start()
+        def on_finished(success, msg):
+            try:
+                self._on_upload_finished(success, msg, loading)
+            finally:
+                # Rimuovi il thread dalla lista quando termina
+                try:
+                    self.upload_threads.remove(upload_thread)
+                except ValueError:
+                    pass
+
+        upload_thread.finished.connect(on_finished)
+
+        # Conserva un riferimento per evitare GC anticipata quando carichiamo più file
+        self.upload_threads.append(upload_thread)
+        upload_thread.start()
     
     def _on_upload_finished(self, success, message, loading_dialog):
         """Callback quando l'upload è completato"""
