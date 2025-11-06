@@ -78,7 +78,7 @@ class ReflectionService:
     @staticmethod
     def _extract_json_object(text: str) -> Optional[Dict[str, Any]]:
         """
-        Estrae il PRIMO oggetto JSON valido dal testo, anche se il modello
+        Estrae il PRIMO oggetto JSON (dict) valido dal testo, anche se il modello
         ha aggiunto testo prima/dopo. Usa scansione a conteggio parentesi.
         """
         if not text:
@@ -87,7 +87,10 @@ class ReflectionService:
         # Prima, prova la via semplice
         try:
             candidate = text.strip()
-            return json.loads(candidate)
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+            # Se non è un dict, continua con le strategie successive
         except Exception:
             pass
 
@@ -120,6 +123,46 @@ class ReflectionService:
                                 return json.loads(chunk)
                             except Exception:
                                 break
+        return None
+
+    @staticmethod
+    def _extract_json_array(text: str) -> Optional[List[Any]]:
+        """
+        Estrae il PRIMO array JSON valido dal testo (anche con testo extra o code fences).
+        Utile per liste di topic.
+        """
+        if not text:
+            return None
+
+        # Tentativo diretto
+        try:
+            candidate = text.strip()
+            parsed = json.loads(candidate)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            pass
+
+        # Rimuovi code fences
+        text = ReflectionService._strip_code_fences(text)
+
+        # Cerca porzione tra [ ... ] con conteggio parentesi quadre
+        starts = [m.start() for m in re.finditer(r"\[", text)]
+        for start in starts:
+            depth = 0
+            for i in range(start, len(text)):
+                if text[i] == '[':
+                    depth += 1
+                elif text[i] == ']':
+                    depth -= 1
+                    if depth == 0:
+                        chunk = text[start : i + 1]
+                        try:
+                            parsed = json.loads(chunk)
+                            if isinstance(parsed, list):
+                                return parsed
+                        except Exception:
+                            break
         return None
 
     @staticmethod
@@ -335,13 +378,14 @@ Ogni argomento deve essere:
                 logger.warning("Risposta vuota dal servizio AI per estrazione topic.")
                 return [f"Argomento {i+1}" for i in range(num_topics)]
 
-            payload = self._extract_json_object(response)
-            if not isinstance(payload, list) or not payload:
+            # Estrai un array JSON, anche se è incapsulato in testo extra
+            payload_list = self._extract_json_array(response)
+            if not isinstance(payload_list, list) or not payload_list:
                 raise ValueError("Formato non valido: la risposta non è una lista non vuota.")
 
             # Normalizza: stringhe 2-5 parole
             topics: List[str] = []
-            for t in payload[:num_topics]:
+            for t in payload_list[:num_topics]:
                 s = str(t).strip()
                 if s:
                     topics.append(s)

@@ -7,7 +7,7 @@ from PyQt6.QtGui import QColor, QFont, QTextOption
 from PyQt6.QtWidgets import (QCheckBox, QFileDialog, QFrame,
                              QGraphicsOpacityEffect, QGridLayout, QHBoxLayout,
                              QLabel, QMainWindow, QMessageBox, QProgressDialog,
-                             QPushButton, QScrollArea, QTabWidget, QTextEdit,
+                             QPushButton, QScrollArea, QSpinBox, QTabWidget, QTextEdit,
                              QVBoxLayout, QWidget)
 
 from config.env_loader import get_env_bool
@@ -276,15 +276,32 @@ class GenerationThread(QThread):
             # Step 4: Estrai topic principali
             print("[DEBUG] 5. Estrazione topics...")
             
-            # Se l'utente ha fornito una query, usala direttamente
+            # Se l'utente ha fornito una query, usala per focalizzare i topic
             if self.user_query and self.user_query.strip():
-                topics = [self.user_query.strip()]
-                self.progress.emit(35, f"Usando query utente: {self.user_query}")
-                print(f"[DEBUG] Usando query utente: {self.user_query}")
+                user_q = self.user_query.strip()
+                self.progress.emit(30, f"Ricerca contenuti per: {user_q}")
+                print(f"[DEBUG] Usando query utente: {user_q}")
+
+                # Cerca chunks rilevanti per la query utente
+                relevant_chunks = self.rag_service.search_relevant_chunks(
+                    collection_name,
+                    user_q,
+                    n_results=self.rag_service.chunks_per_topic if hasattr(self.rag_service, 'chunks_per_topic') else 8
+                )
+                rel_texts = [c['content'] for c in relevant_chunks] if relevant_chunks else all_chunks
+
+                # Estrai fino a num_cards sotto-argomenti pertinenti alla query
+                topics = self.reflection_service.extract_topics(rel_texts, self.num_cards)
+                if not topics:
+                    topics = [user_q]
+                self.progress.emit(35, f"Identificati {len(topics)} argomenti da '{user_q}'")
             else:
                 # Altrimenti estrai automaticamente i topic
                 topics = self.reflection_service.extract_topics(all_chunks, self.num_cards)
                 self.progress.emit(35, f"Identificati {len(topics)} argomenti")
+
+            # Limita i topic al numero richiesto
+            topics = topics[:self.num_cards]
             
             # Step 5: Per ogni topic, genera flashcard con RAG + Reflection
             print("[DEBUG] 6. Inizio generazione per topic...")
@@ -325,6 +342,10 @@ class GenerationThread(QThread):
                         )
                     
                     flashcards.append(flashcard)
+
+                    # Interrompi se abbiamo raggiunto il numero richiesto
+                    if len(flashcards) >= self.num_cards:
+                        break
                     
                 except Exception as e_topic:
                     # Non bloccare tutto se un solo topic fallisce
@@ -563,6 +584,30 @@ class SubjectWindow(QMainWindow):
         web_search_frame = self.create_web_search_option()
         gen_layout.addWidget(web_search_frame)
         
+        # === Numero di flashcard da generare ===
+        count_label = QLabel("Numero di Flashcard")
+        count_label.setStyleSheet(get_text_label_style(14, 600))
+        gen_layout.addWidget(count_label)
+
+        count_layout = QHBoxLayout()
+        count_layout.setSpacing(12)
+
+        self.num_cards_spin = QSpinBox()
+        self.num_cards_spin.setRange(1, 100)
+        try:
+            default_num = int(self.db.get_setting('flashcards_per_generation', '10'))
+        except Exception:
+            default_num = 10
+        self.num_cards_spin.setValue(max(1, min(100, default_num)))
+        self.num_cards_spin.setToolTip("Numero massimo di flashcard da generare")
+        # Persisti la scelta dell'utente
+        self.num_cards_spin.valueChanged.connect(
+            lambda v: self.db.set_setting('flashcards_per_generation', str(v))
+        )
+        count_layout.addWidget(self.num_cards_spin)
+        count_layout.addStretch()
+        gen_layout.addLayout(count_layout)
+
         # === NUOVA SEZIONE: Query utente per RAG ===
         query_label = QLabel("Query Personalizzata (opzionale)")
         query_label.setStyleSheet(get_text_label_style(14, 600))
@@ -1027,7 +1072,7 @@ class SubjectWindow(QMainWindow):
             subject_id=self.subject_data['id'],
             subject_name=self.subject_data['name'],
             documents=documents,
-            num_cards=10,
+            num_cards=int(self.num_cards_spin.value()),
             use_web_search=use_web_search,
             use_rag=use_rag,
             use_reflection=use_reflection,
