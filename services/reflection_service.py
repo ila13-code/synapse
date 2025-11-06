@@ -1,8 +1,8 @@
 """
 Servizio Reflection per migliorare la qualità delle flashcard attraverso un processo iterativo
 """
-from typing import List, Dict, Any
 import json
+from typing import Any, Dict, List
 
 
 class ReflectionService:
@@ -28,24 +28,27 @@ class ReflectionService:
         Returns:
             Dizionario con front e back della flashcard
         """
-        prompt = f"""Sei un esperto nell'apprendimento e nella creazione di materiali didattici.
+        prompt = f"""Sei un esperto di apprendimento e metacognizione. Il tuo obiettivo è creare UNA SOLA flashcard "atomica" basata sui principi di Andy Matuschak.
 
-Crea UNA SOLA flashcard sul seguente argomento: {topic}
+Argomento: {topic}
 
 Usa SOLO le informazioni dal seguente contesto:
 {context}
 
+Segui queste 5 REGOLE ASSOLUTE:
+1.  **Focalizzata**: La domanda (front) deve riguardare UN SOLO concetto o fatto.
+2.  **Precisa**: La domanda non deve essere ambigua. Deve far capire esattamente cosa è richiesto.
+3.  **Coerente**: La risposta (back) deve essere l'unica risposta corretta e sempre la stessa.
+4.  **Chiedi il "Perché"**: Se possibile, preferisci domande sul "perché" o sulle implicazioni, piuttosto che definizioni secche.
+5.  **Sforzo Cognitivo**: La risposta NON deve essere intuibile dalla domanda (evita indizi banali o domande binarie Sì/No).
+
 Restituisci la risposta in formato JSON con questa struttura esatta:
 {{
-    "front": "Domanda chiara e diretta",
-    "back": "Risposta completa e dettagliata"
+    "front": "Domanda atomica, precisa e che richiede sforzo",
+    "back": "Risposta concisa e accurata basata sul contesto"
 }}
 
-Ricorda:
-- La domanda (front) deve essere chiara e specifica
-- La risposta (back) deve essere completa ma concisa
-- Usa SOLO informazioni presenti nel contesto fornito
-- Non inventare informazioni"""
+Non inventare informazioni non presenti nel contesto."""
 
         try:
             response = self.ai_service._call_api(prompt)
@@ -99,9 +102,9 @@ Ricorda:
         Returns:
             Critica testuale
         """
-        prompt = f"""Sei un critico esperto di materiali didattici.
+        prompt = f"""Sei un critico esperto di materiali didattici che segue i principi di Andy Matuschak.
 
-Analizza questa flashcard e fornisci una critica costruttiva:
+Analizza questa flashcard basandoti sul contesto fornito.
 
 FLASHCARD:
 Domanda: {flashcard['front']}
@@ -110,15 +113,16 @@ Risposta: {flashcard['back']}
 CONTESTO DISPONIBILE:
 {context}
 
-Valuta i seguenti aspetti:
-1. La domanda è chiara e specifica?
-2. La risposta è completa ma concisa?
-3. La risposta è fattualmente corretta secondo il contesto?
-4. Mancano dettagli importanti?
-5. La risposta è troppo lunga o troppo breve?
+Valuta la flashcard ESCLUSIVAMENTE secondo queste 5 REGOLE:
+1.  **Focalizzata**: Chiede un solo concetto? O è troppo ampia (es. chiede una lista)?
+2.  **Precisa**: È ambigua? Si capisce esattamente cosa vuole?
+3.  **Contesto**: La risposta è corretta e basata SOLO sul contesto?
+4.  **Sforzo Cognitivo**: La risposta è troppo ovvia leggendo la domanda?
+5.  **Concettuale**: È una definizione secca (negativo) o chiede il "perché", una differenza, o un'implicazione (positivo)?
 
-Fornisci una critica in 2-3 frasi, concentrandoti su come migliorare la flashcard.
-Se la flashcard è già eccellente, dillo chiaramente."""
+Fornisci una critica COSTRUTTIVA in 2-3 frasi.
+- Se la flashcard è già eccellente e rispetta le regole, dillo (es. "Eccellente, rispetta tutti i principi.").
+- Se non rispetta le regole, spiega COSA migliorare (es. "Non è focalizzata, chiede due cose. Scomponila." OPPURE "Domanda troppo vaga, rendila precisa." OPPURE "La risposta è intuibile, riformula la domanda per richiedere più sforzo.")"""
 
         try:
             critique = self.ai_service._call_api(prompt)

@@ -82,7 +82,7 @@ class OllamaEmbeddingFunction:
 # SOSTITUISCI L'INTERA CLASSE CON QUESTA:
 
 class GeminiEmbeddingFunction:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str = "gemini-embedding-001"):
         self.client = genai.Client(api_key=api_key)
         
         # Correzione 1: Aggiungi 'models/' se non è già presente

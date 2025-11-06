@@ -3,7 +3,8 @@ Servizio AI unificato per LLM locali (LM Studio, Ollama) con API OpenAI-like
 """
 import json
 import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from openai import OpenAI
 
 
@@ -102,26 +103,25 @@ Assicurati che tutte le informazioni siano accurate e verificate.
 IMPORTANTE: Basati SOLO sul contenuto fornito. Non aggiungere informazioni esterne.
 """
 
-        prompt = f"""Sei un assistente esperto nella creazione di flashcard per studenti universitari.
-Analizza il seguente contenuto e crea {num_cards} flashcard efficaci e dettagliate.
+        prompt = f"""Sei un assistente esperto nella creazione di flashcard per studenti universitari. Il tuo obiettivo è applicare i principi di Andy Matuschak per creare flashcard "atomiche" e che favoriscano la comprensione.
 
 {web_search_instruction}
 
 Contenuto:
 {content}
 
+IMPORTANTE: Segui queste 5 REGOLE ASSOLUTE per OGNI flashcard che crei:
+1.  **Scomponi (Focalizzata)**: Ogni flashcard deve riguardare UN SOLO concetto o fatto. NON creare flashcard che chiedono liste (es. "Quali sono i 3 tipi di X?"). Invece, crea 3 card separate o usa la scomposizione (es. "Un tipo di X è...").
+2.  **Precisa**: La domanda non deve essere ambigua.
+3.  **Chiedi il "Perché"**: Oltre ai fatti, crea domande sul "perché" un concetto funziona in un certo modo (es. "Perché l'algoritmo X usa una coda invece di uno stack?").
+4.  **Sforzo Cognitivo**: La risposta NON deve essere intuibile dalla domanda. Evita domande Sì/No.
+5.  **Concettuale**: Evita definizioni secche. Chiedi differenze (es. "Differenza tra X e Y"), attributi (es. "Cosa è sempre vero per X?"), o implicazioni (es. "Quale problema risolve X?").
+
+Crea {num_cards} flashcard che seguono queste regole.
+
 IMPORTANTE: Rispondi SOLO con un array JSON valido, senza markdown o formattazione.
 Formato richiesto:
-[{{"front": "domanda", "back": "risposta", "difficulty": "easy|medium|hard", "tags": ["tag1", "tag2"]}}]
-
-Criteri:
-- Domande chiare e specifiche
-- Risposte complete ma concise (massimo 200 parole)
-- Varietà di difficoltà (easy, medium, hard)
-- Copertura dei concetti principali
-- Tag pertinenti per ogni flashcard
-- Le risposte devono essere in formato testo semplice, evita formattazioni complesse
-- Assicurati che il JSON sia valido e ben formattato
+[{{"front": "Domanda atomica e precisa", "back": "Risposta concisa", "difficulty": "easy|medium|hard", "tags": ["tag1", "tag2"]}}]
 
 Rispondi SOLO con il JSON, nessun testo aggiuntivo."""
 
