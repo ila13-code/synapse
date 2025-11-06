@@ -61,13 +61,13 @@ class DocumentUploadThread(QThread):
                 self.finished.emit(False, f"Errore inizializzazione DB nel thread: {e}")
                 return
 
-            # 3) Indicizzazione RAG (non bloccare l’upload se fallisce)
+                        # 3) Indicizzazione RAG (non bloccare l'upload se fallisce)
             try:
                 doc = db.get_document(doc_id)
                 if doc and doc.get('content'):
-                    collection = self.rag_service.create_collection(self.subject_id, self.subject_name)
+                    collection_name = self.rag_service.create_collection(self.subject_id, self.subject_name)
                     self.rag_service.index_document(
-                        collection,
+                        collection_name,
                         doc['id'],
                         doc['name'],
                         doc['content']
@@ -231,36 +231,47 @@ class GenerationThread(QThread):
             # Step 1: Crea/Ottieni collection
             self.progress.emit(5, "Inizializzando vector database...")
             print("[DEBUG] 2. Creazione collection...")
-            collection = self.rag_service.create_collection(
+            collection_name = self.rag_service.create_collection(
                 self.subject_id, 
                 self.subject_name
             )
             
-            # Step 2: Indicizza i documenti
-            self.progress.emit(10, "Indicizzando documenti...")
-            print("[DEBUG] 3. Inizio indicizzazione RAG...")
+            # Step 2: Indicizza SOLO i documenti non ancora presenti in Qdrant
+            self.progress.emit(10, "Verifica indicizzazione documenti...")
+            print("[DEBUG] 3. Verifica/indicizzazione RAG...")
             for i, doc in enumerate(self.documents):
-                if doc['content']:
-                    # Questo è il punto che falliva prima
-                    self.rag_service.index_document(
-                        collection,
-                        doc['id'],
-                        doc['name'],
-                        doc['content']
-                    )
-                    progress_pct = 10 + (i + 1) * 10 // len(self.documents)
-                    self.progress.emit(progress_pct, f"Indicizzato: {doc['name']}")
-            print("[DEBUG] 3. Indicizzazione RAG completata.")
+                if not doc.get('content'):
+                    continue
+                try:
+                    already = self.rag_service.is_document_indexed(collection_name, doc['id'])
+                except Exception:
+                    already = False
+                if already:
+                    progress_pct = 10 + (i + 1) * 5 // max(1, len(self.documents))
+                    self.progress.emit(progress_pct, f"Già indicizzato: {doc['name']}")
+                    continue
+                # Indicizza documento non presente
+                self.rag_service.index_document(
+                    collection_name,
+                    doc['id'],
+                    doc['name'],
+                    doc['content']
+                )
+                progress_pct = 10 + (i + 1) * 10 // max(1, len(self.documents))
+                self.progress.emit(progress_pct, f"Indicizzato: {doc['name']}")
+            print("[DEBUG] 3. Verifica/indicizzazione RAG completata.")
 
             
-            # Step 3: Estrai tutti i chunks per analizzare i topic
-            print("[DEBUG] 4. Estrazione chunks...")
-            self.progress.emit(25, "Estraendo argomenti principali...")
-            all_chunks = []
-            for doc in self.documents:
-                if doc['content']:
-                    chunks = self.rag_service.chunk_text(doc['content'])
-                    all_chunks.extend(chunks)
+            # Step 3: Usa SEMPRE i chunk salvati in Qdrant per l'analisi dei topic
+            print("[DEBUG] 4. Lettura chunks dalla collection...")
+            self.progress.emit(25, "Recupero contenuti indicizzati...")
+            all_chunks = self.rag_service.get_all_chunks_texts(collection_name)
+            if not all_chunks:
+                # Fallback (non dovrebbe succedere): ricava dai documenti in memoria
+                print("[DEBUG] Nessun chunk trovato in Qdrant: fallback a chunking in memoria")
+                for doc in self.documents:
+                    if doc.get('content'):
+                        all_chunks.extend(self.rag_service.chunk_text(doc['content']))
             
             # Step 4: Estrai topic principali
             print("[DEBUG] 5. Estrazione topics...")
@@ -282,11 +293,18 @@ class GenerationThread(QThread):
                     base_progress = 35 + (i * 65 // len(topics))
                     
                     self.progress.emit(base_progress, f"Analizzando: {topic}")
+                    print(f"[RAG-DEBUG] Cerco chunks per topic: '{topic}'")
                     relevant_chunks = self.rag_service.search_relevant_chunks(
-                        collection, 
+                        collection_name, 
                         topic, 
-                        n_results=10  # Aumentato da 5 a 10 per più contesto
+                        n_results=self.rag_service.chunks_per_topic  # Usa configurazione
                     )
+                    
+                    # Log dei chunks recuperati
+                    print(f"[RAG-DEBUG] Trovati {len(relevant_chunks)} chunks rilevanti per '{topic}'")
+                    if relevant_chunks:
+                        for idx, chunk in enumerate(relevant_chunks[:3]):  # Mostra solo i primi 3
+                            print(f"  Chunk {idx+1}: {chunk['content'][:100]}... (da '{chunk['metadata']['document_name']}')")
                     
                     context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
                     
@@ -877,11 +895,11 @@ class SubjectWindow(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             # Rimuovi dal vector database prima di eliminare dal DB
             try:
-                collection = self.rag_service.create_collection(
+                collection_name = self.rag_service.create_collection(
                     self.subject_data['id'],
                     self.subject_data['name']
                 )
-                self.rag_service.remove_document(collection, doc_id)
+                self.rag_service.remove_document(collection_name, doc_id)
             except Exception as e:
                 print(f"Errore rimozione da RAG: {e}")
                 # Continua comunque con l'eliminazione dal DB
