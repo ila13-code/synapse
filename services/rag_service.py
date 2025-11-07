@@ -183,18 +183,38 @@ class GeminiEmbeddingFunction:
 
 
 class RAGService:
-    """Servizio per implementare RAG con Qdrant."""
+    """Servizio per implementare RAG con Qdrant.
+    
+    Implementa il pattern Singleton per evitare accessi concorrenti al database Qdrant.
+    """
+    
+    _instance = None
+    _lock = None
+    
+    def __new__(cls, persist_directory: str = "./qdrant_db"):
+        """Singleton pattern: ritorna sempre la stessa istanza"""
+        if cls._instance is None:
+            print("[RAG] Creazione nuova istanza singleton di RAGService")
+            cls._instance = super(RAGService, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
     def __init__(self, persist_directory: str = "./qdrant_db"):
         """
         Args:
             persist_directory: Directory dove salvare il database Qdrant
         """
+        # Evita reinizializzazione se l'istanza è già stata inizializzata
+        if self._initialized:
+            return
+            
+        print(f"[RAG] Inizializzazione RAGService con persist_directory: {persist_directory}")
         self.persist_directory = persist_directory
         Path(persist_directory).mkdir(parents=True, exist_ok=True)
         
         # Client Qdrant in modalità embedded (salva su disco)
         self.client = QdrantClient(path=persist_directory)
+        self._initialized = True
         
         # Configurazione embedding
         self.use_local_llm = os.getenv("USE_LOCAL_LLM", "true").lower() == "true"
@@ -474,3 +494,25 @@ class RAGService:
             print(f"[RAG] Collection eliminata: {collection_name}")
         except Exception as e:
             print(f"[RAG] Errore eliminazione collection {collection_name}: {e}")
+    
+    # ------------------ Cleanup ------------------
+    
+    @classmethod
+    def close(cls):
+        """Chiude la connessione Qdrant e resetta il singleton.
+        
+        Utile per test o quando si vuole reinizializzare il servizio.
+        NOTA: In produzione NON è necessario chiamare questo metodo,
+        il singleton rimane attivo per tutta la vita dell'applicazione.
+        """
+        if cls._instance is not None and hasattr(cls._instance, 'client'):
+            try:
+                # Qdrant client non ha un metodo close() esplicito,
+                # ma possiamo forzare la garbage collection
+                cls._instance.client = None
+                print("[RAG] Client Qdrant chiuso")
+            except Exception as e:
+                print(f"[RAG] Errore durante chiusura client: {e}")
+            finally:
+                cls._instance = None
+                print("[RAG] Singleton RAGService resettato")

@@ -356,10 +356,38 @@ Assicurati che la flashcard migliorata:
     def extract_topics(self, chunks: List[str], num_topics: int = 10) -> List[str]:
         """
         Estrae i topic principali da una lista di chunks.
+        Se chunks contiene solo la query utente (1 elemento breve), estrae sub-topic dalla query stessa.
         """
         sample_content = "\n\n".join(chunks[:min(10, len(chunks))])
+        
+        # Determina se stiamo analizzando documenti o una query utente
+        is_query = len(chunks) == 1 and len(sample_content) < 200
+        
+        if is_query:
+            # Estrai topic DALLA QUERY utente
+            prompt = f"""La seguente è una domanda/query di uno studente:
 
-        prompt = f"""Analizza il seguente testo e identifica i {num_topics} argomenti principali.
+QUERY: {sample_content}
+
+Estrai {num_topics} sotto-argomenti o concetti chiave DALLA QUERY STESSA che possono essere approfonditi per rispondere completamente alla domanda.
+
+Restituisci SOLO una lista JSON di {num_topics} argomenti, senza spiegazioni:
+["Argomento 1", "Argomento 2", ...]
+
+Ogni argomento deve essere:
+- Specifico e pertinente alla query
+- Espresso in 2-5 parole
+- Utile per comprendere la risposta alla domanda
+
+IMPORTANTE: Se la query è molto specifica e non può essere scomposta, ripeti la query principale con leggere variazioni.
+
+Esempio:
+Query: "Come funzionano i database SQL?"
+→ ["Database relazionali", "Linguaggio SQL", "Tabelle e relazioni", "Query SELECT", "Transazioni ACID", ...]
+"""
+        else:
+            # Estrai topic DAI DOCUMENTI
+            prompt = f"""Analizza il seguente testo e identifica i {num_topics} argomenti principali.
 
 TESTO:
 {sample_content}
