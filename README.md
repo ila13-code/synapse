@@ -2,7 +2,7 @@
 
 ## Setup rapido
 
-1. Create una copia del file `.env.example` (se presente) oppure create un nuovo `.env` nella root del progetto.
+1. Create una copia del file `.env.example` oppure create un nuovo `.env` nella root del progetto.
 2. Rinominatelo in `.env` e aggiungete le vostre chiavi/config preferite:
 
 ```
