@@ -1,19 +1,41 @@
+````markdown
 
+# Synapse
 
-create una copia del file .env.example
+## Setup rapido
 
-rinominatelo semplicemente in .env
+1. Create una copia del file `.env.example` (se presente) oppure create un nuovo `.env` nella root del progetto.
+2. Rinominatelo in `.env` e aggiungete le vostre chiavi/config preferite:
 
-mettete la vostra api key di gemini e/o il nome del modello locale che usate
+```
+# LLM remoto (Google Gemini)
+GEMINI_API_KEY=la-vostra-api-key
+GEMINI_MODEL=gemini-2.0-flash-exp
 
-dovrebbe funzionare anche con ollama se usa le api di openai, nel dubbio io sto usando LM-studio e lo consiglio anche a voi perchè non è da linea di comando, ha una gui facile da impostare e gestire tutti i parametri, puoi scaricare tutti i modelli, puoi anche mandargli foto ecc. insomma, è meglio
+# LLM locale (LM Studio / Ollama via API OpenAI-like)
+USE_LOCAL_LLM=true
+LOCAL_LLM_BASE_URL=http://127.0.0.1:1234/v1
+LOCAL_LLM_MODEL=
 
-ma di base useremo gemini-2.5-flash che è molto meglio e gratis
+# RAG e Reflection
+USE_RAG=true
+USE_REFLECTION=true
 
+# Ricerca Web (opzionale ma consigliata)
+# Con Tavily evitiamo problemi di rate limiting (es. DuckDuckGo 202)
+TAVILY_API_KEY=la-vostra-api-key
+```
 
-poi eseguire
+3. Installazione dipendenze e avvio (Windows PowerShell):
 
-```python -m venv .venv```
-```source .venv/bin/activate && pip install -r requirements.txt```
-```py main.py```
+```
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py
+```
 
+Note:
+- Per usare la ricerca web integrata, impostate `TAVILY_API_KEY`. Se non presente, il codice farà un fallback leggero su Wikipedia.
+- Se preferite un LLM locale, avviate LM Studio (o equivalente) e lasciate `USE_LOCAL_LLM=true`.
+- Con Gemini impostate `USE_LOCAL_LLM=false` e fornite `GEMINI_API_KEY`.

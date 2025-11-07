@@ -18,6 +18,7 @@ from services.ai_service import AIService
 from services.export_service import ExportService
 from services.file_service import FileService
 from services.rag_service import RAGService
+from services.web_search_service import WebSearchService
 from services.reflection_service import ReflectionService
 from ui.dialogs import EditFlashcardDialog, ToggleSwitch
 from ui.icons import IconProvider
@@ -162,7 +163,7 @@ class GenerationThread(QThread):
     def __init__(self, ai_service, rag_service, reflection_service, 
                  subject_id, subject_name, documents, num_cards=10, 
                  use_web_search=False, use_rag=True, use_reflection=True,
-                 user_query=None):  # NUOVO PARAMETRO
+                 user_query=None, web_search_service=None):  # NUOVO PARAMETRO
         super().__init__()
         self.ai_service = ai_service
         self.rag_service = rag_service
@@ -175,6 +176,7 @@ class GenerationThread(QThread):
         self.use_rag = use_rag
         self.use_reflection = use_reflection
         self.user_query = user_query  # NUOVO ATTRIBUTO
+        self.web_search_service = web_search_service  # Servizio ricerca web
     
     def run(self):
         try:
@@ -210,6 +212,21 @@ class GenerationThread(QThread):
                 all_content.append(doc['content'])
         
         combined_content = "\n\n".join(all_content)
+
+        # Se la ricerca web è abilitata, arricchisci il contesto
+        if self.use_web_search and self.web_search_service:
+            search_query = self.user_query or self.subject_name
+            self.progress.emit(55, f"Ricerca web: {search_query[:50]}...")
+            print(f"[WEB] Avvio ricerca web (tradizionale) con query: '{search_query}'")
+            try:
+                web_block = self.web_search_service.enrich_context_block(search_query, max_results=4)
+            except Exception:
+                web_block = ""
+            if web_block:
+                combined_content += f"\n\n{web_block}\n"
+                print("[WEB] Ricerca web completata (tradizionale) e integrata nel contesto")
+            else:
+                print("[WEB] Nessun risultato web (tradizionale) o errore durante la ricerca")
         
         self.progress.emit(50, "Generando flashcard...")
         
@@ -282,19 +299,15 @@ class GenerationThread(QThread):
                 self.progress.emit(30, f"Ricerca contenuti per: {user_q}")
                 print(f"[DEBUG] Usando query utente: {user_q}")
 
-                # Cerca chunks rilevanti per la query utente
-                relevant_chunks = self.rag_service.search_relevant_chunks(
-                    collection_name,
-                    user_q,
-                    n_results=self.rag_service.chunks_per_topic if hasattr(self.rag_service, 'chunks_per_topic') else 8
-                )
-                rel_texts = [c['content'] for c in relevant_chunks] if relevant_chunks else all_chunks
-
-                # Estrai fino a num_cards sotto-argomenti pertinenti alla query
-                topics = self.reflection_service.extract_topics(rel_texts, self.num_cards)
+                # IMPORTANTE: Se l'utente fa una domanda specifica, 
+                # i topic devono essere estratti DALLA DOMANDA, non dai documenti!
+                # I documenti servono solo come contesto per rispondere.
+                
+                print(f"[DEBUG] Estrazione topic DALLA QUERY utente (non dai documenti)")
+                topics = self.reflection_service.extract_topics([user_q], self.num_cards)
                 if not topics:
                     topics = [user_q]
-                self.progress.emit(35, f"Identificati {len(topics)} argomenti da '{user_q}'")
+                self.progress.emit(35, f"Identificati {len(topics)} argomenti dalla query utente")
             else:
                 # Altrimenti estrai automaticamente i topic
                 topics = self.reflection_service.extract_topics(all_chunks, self.num_cards)
@@ -310,10 +323,20 @@ class GenerationThread(QThread):
                     base_progress = 35 + (i * 65 // len(topics))
                     
                     self.progress.emit(base_progress, f"Analizzando: {topic}")
-                    print(f"[RAG-DEBUG] Cerco chunks per topic: '{topic}'")
+                    
+                    # IMPORTANTE: Se c'è una query utente, combina topic + query per la ricerca
+                    # Questo evita di trovare chunks irrilevanti che matchano solo parole generiche
+                    if self.user_query and self.user_query.strip():
+                        # Cerca usando "topic NEL CONTESTO DELLA query utente"
+                        search_query = f"{topic} (nel contesto di: {self.user_query.strip()})"
+                        print(f"[RAG-DEBUG] Cerco chunks per topic '{topic}' nel contesto della query utente")
+                    else:
+                        search_query = topic
+                        print(f"[RAG-DEBUG] Cerco chunks per topic: '{topic}'")
+                    
                     relevant_chunks = self.rag_service.search_relevant_chunks(
                         collection_name, 
-                        topic, 
+                        search_query, 
                         n_results=self.rag_service.chunks_per_topic  # Usa configurazione
                     )
                     
@@ -324,6 +347,21 @@ class GenerationThread(QThread):
                             print(f"  Chunk {idx+1}: {chunk['content'][:100]}... (da '{chunk['metadata']['document_name']}')")
                     
                     context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
+
+                    # Integra snippet web per la domanda utente (NON per il topic!) se richiesto
+                    if self.use_web_search and self.web_search_service:
+                        # Usa la query originale dell'utente, non il topic estratto dal RAG
+                        web_query = self.user_query or topic
+                        print(f"[WEB] Avvio ricerca web per query utente: '{web_query}' (topic RAG era: '{topic}')")
+                        try:
+                            web_block = self.web_search_service.enrich_context_block(web_query, max_results=3)
+                        except Exception:
+                            web_block = ""
+                        if web_block:
+                            context += f"\n\n{web_block}\n"
+                            print(f"[WEB] Ricerca web completata per query '{web_query}' e integrata nel contesto")
+                        else:
+                            print(f"[WEB] Nessun risultato web per query '{web_query}' o errore durante la ricerca")
                     
                     if self.use_reflection:
                         self.progress.emit(
@@ -372,6 +410,7 @@ class SubjectWindow(QMainWindow):
         self.db = DatabaseManager()
         self.file_service = FileService()
         self.rag_service = RAGService()  # Inizializza RAG service
+        self.web_search_service = WebSearchService()  # Servizio ricerca web
         self.current_flashcard_index = 0
         self.is_flipped = False
         self.flashcards = []
@@ -1157,7 +1196,8 @@ class SubjectWindow(QMainWindow):
             use_web_search=use_web_search,
             use_rag=use_rag,
             use_reflection=use_reflection,
-            user_query=user_query  # NUOVO PARAMETRO
+            user_query=user_query,  # NUOVO PARAMETRO
+            web_search_service=self.web_search_service,  # Passa servizio
         )
         
         # Connetti i segnali
