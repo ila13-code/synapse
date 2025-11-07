@@ -6,11 +6,5 @@ PyPDF2==3.0.1        # Estrazione testo da PDF
 requests==2.32.5     # Chiamate HTTP (embeddings Ollama, ecc.)
 qdrant-client==1.7.0 # Database vettoriale embedded (funziona BENISSIMO su Windows!)
 QtAwesome==1.4.0     # Icone Font Awesome (opzionale UI)
+tavily-python>=0.3.0,<1.0.0  
 
-# Ricerca Web (opzionale ma consigliata)
-tavily-python>=0.3.0,<1.0.0  # API semplice per web search, richiede TAVILY_API_KEY
-
-# Facoltativi (commentati). Decommenta se necessario in futuro:
-# tqdm==4.67.1        # Barre di progresso
-# rich==14.2.0        # Output console migliorato
-# orjson==3.11.4      # JSON veloce
