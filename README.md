@@ -1,5 +1,3 @@
-````markdown
-
 # Synapse
 
 ## Setup rapido
