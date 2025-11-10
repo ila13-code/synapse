@@ -509,7 +509,7 @@ class SubjectWindow(QMainWindow):
         # Abilita drag & drop sul widget della card con handler sicuri
         card.setAcceptDrops(True)
 
-        def card_dragEnterEvent(w, event):
+        def card_dragEnterEvent(event):
             try:
                 md = event.mimeData()
                 # Accetta solo se contiene URL locali con estensione supportata
@@ -525,7 +525,7 @@ class SubjectWindow(QMainWindow):
                 # In caso di qualunque errore, non far crashare l'app
                 event.ignore()
 
-        def card_dropEvent(w, event):
+        def card_dropEvent( event):
             try:
                 md = event.mimeData()
                 if not (md and md.hasUrls()):
