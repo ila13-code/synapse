@@ -293,6 +293,101 @@ class RAGService:
         return collection_name
 
     # ------------------ Chunking ------------------
+    # Sostituisci la tua vecchia funzione 'chunk_text' con questa
+
+    def chunk_text_recursive_test(self, text: str, chunk_size: int = None, chunk_overlap: int = None) -> List[str]:
+        """
+        Divide il testo in chunk usando una strategia ricorsiva.
+        
+        Args:
+            text: Il testo da dividere.
+            chunk_size: La dimensione massima desiderata per chunk (usa il default del servizio se None).
+            chunk_overlap: La sovrapposizione desiderata (usa il default del servizio se None).
+        
+        Returns:
+            Una lista di chunk di testo.
+        """
+        
+        # Usa i valori di default configurati nel servizio se non forniti
+        final_chunk_size = chunk_size if chunk_size is not None else self.chunk_size
+        final_overlap = chunk_overlap if chunk_overlap is not None else self.chunk_overlap
+
+        # Gerarchia dei separatori: dal più grande (logico) al più piccolo (brutale)
+        separators = ["\n\n", "\n", ". ", " ", ""]
+        
+        # Inizia con il testo intero
+        final_chunks = []
+        
+        # Funzione helper ricorsiva
+        def _recursive_split(text: str, current_separators: List[str]):
+            # Se il testo è già abbastanza piccolo, è un chunk
+            if len(text) <= final_chunk_size:
+                if text.strip(): # Assicurati che non sia solo spazio bianco
+                    final_chunks.append(text.strip())
+                return
+
+            # Se abbiamo finito i separatori, dividiamo brutalmente
+            if not current_separators:
+                for i in range(0, len(text), final_chunk_size - final_overlap):
+                    chunk = text[i : i + final_chunk_size]
+                    if chunk.strip():
+                        final_chunks.append(chunk.strip())
+                return
+
+            # Prendi il separatore corrente (il migliore)
+            separator = current_separators[0]
+            remaining_separators = current_separators[1:]
+
+            # Cerca di dividere il testo con questo separatore
+            # Usiamo un trucco per mantenere il separatore (utile per \n\n)
+            if separator == "":
+                splits = list(text) # Dividi per carattere
+            else:
+                splits = text.split(separator)
+
+            current_chunk = ""
+            for i, part in enumerate(splits):
+                # Ricostruisci il testo con il separatore (tranne per l'ultimo pezzo)
+                if i < len(splits) - 1:
+                    part_with_separator = part + separator
+                else:
+                    part_with_separator = part
+                
+                # Se l'aggiunta di questa parte supera il limite...
+                if len(current_chunk) + len(part_with_separator) > final_chunk_size:
+                    
+                    # Se il current_chunk non è vuoto, è un pezzo valido
+                    if current_chunk:
+                        # ...ma potrebbe essere ancora troppo grande, quindi RILANCIA la ricorsione
+                        _recursive_split(current_chunk.strip(), remaining_separators)
+                    
+                    # Inizia un nuovo chunk, applicando l'overlap
+                    # Prendi l'ultima parte del chunk precedente come overlap
+                    overlap_text = current_chunk[-final_overlap:]
+                    
+                    # Se la parte stessa è più grande del chunk_size, lanciala da sola
+                    if len(part_with_separator) > final_chunk_size:
+                         _recursive_split(part_with_separator.strip(), remaining_separators)
+                         current_chunk = "" # Resetta
+                    else:
+                        current_chunk = overlap_text + part_with_separator
+                
+                else:
+                    current_chunk += part_with_separator
+            
+            # Non dimenticare l'ultimo chunk rimasto
+            if current_chunk.strip():
+                if len(current_chunk) > final_chunk_size:
+                    _recursive_split(current_chunk.strip(), remaining_separators)
+                else:
+                    final_chunks.append(current_chunk.strip())
+
+        # Avvia il processo
+        _recursive_split(text, separators)
+        
+        # Filtra eventuali duplicati o chunk vuoti
+        unique_chunks = list(dict.fromkeys(final_chunks))
+        return [chunk for chunk in unique_chunks if chunk]
 
     def chunk_text(self, text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
         """Divide il testo in chunk con overlap"""
