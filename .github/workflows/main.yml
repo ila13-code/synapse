@@ -3,8 +3,8 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' 
-  workflow_dispatch:  
+      - 'v*'  # Triggera quando pusci un tag tipo v1.0.0
+  workflow_dispatch:  # Permette di lanciarlo manualmente
 
 jobs:
   build:
@@ -49,9 +49,9 @@ jobs:
         fi
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: executables
+        name: synapse-${{ matrix.os }}
         path: dist/synapse-*
 
   release:
@@ -62,10 +62,11 @@ jobs:
     
     steps:
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
-        name: executables
+        pattern: synapse-*
         path: dist
+        merge-multiple: true
     
     - name: Create Release
       uses: softprops/action-gh-release@v1
