@@ -22,6 +22,9 @@ class EditFlashcardDialog(QDialog):
         self.setFixedSize(600, 600)
         self.setModal(True)
         
+        # Centra la finestra allo schermo
+        self.center_on_screen()
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(24)
@@ -195,3 +198,11 @@ class EditFlashcardDialog(QDialog):
                 "Errore", 
                 f"Errore nell'aggiornamento della flashcard:\n{str(e)}"
             )
+    
+    def center_on_screen(self):
+        """Centra la finestra sullo schermo"""
+        from PyQt6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = (screen.height() - self.height()) // 2
+        self.move(x, y)

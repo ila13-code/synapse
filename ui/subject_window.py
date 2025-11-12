@@ -713,6 +713,7 @@ class SubjectWindow(QMainWindow):
         self.num_cards_spin.setMinimumWidth(120)
         
         # Stile migliorato per il QSpinBox - bordi sottili e colori coerenti
+        self.num_cards_spin.setButtonSymbols(QSpinBox.ButtonSymbols.UpDownArrows)
         self.num_cards_spin.setStyleSheet(f"""
             QSpinBox {{
                 font-size: 16px;
@@ -726,33 +727,22 @@ class SubjectWindow(QMainWindow):
             QSpinBox:focus {{
                 border: 1px solid {primary_color};
             }}
-            QSpinBox::up-button, QSpinBox::down-button {{
+            QSpinBox::up-button {{
                 width: 32px;
                 border-radius: 4px;
                 background-color: {primary_color};
+                subcontrol-origin: border;
+                subcontrol-position: top right;
+            }}
+            QSpinBox::down-button {{
+                width: 32px;
+                border-radius: 4px;
+                background-color: {primary_color};
+                subcontrol-origin: border;
+                subcontrol-position: bottom right;
             }}
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
                 background-color: {primary_color}DD;
-            }}
-            QSpinBox::up-arrow {{
-                image: none;
-                border: none;
-                width: 0;
-                height: 0;
-                border-left: 6px solid transparent;
-                border-right: 6px solid transparent;
-                border-bottom: 8px solid #FFFFFF;
-                margin: 0 auto;
-            }}
-            QSpinBox::down-arrow {{
-                image: none;
-                border: none;
-                width: 0;
-                height: 0;
-                border-left: 6px solid transparent;
-                border-right: 6px solid transparent;
-                border-top: 8px solid #FFFFFF;
-                margin: 0 auto;
             }}
         """)
         

@@ -23,6 +23,8 @@ class SettingsDialog(QDialog):
         # Flag per evitare loop di aggiornamenti
         self.updating_api_key = False
         self.power_user_mode = False
+        # Carica lo stato della modalità power user salvato
+        self.load_power_user_mode_state()
         self.setup_ui()
         self.load_settings()
         
@@ -35,8 +37,15 @@ class SettingsDialog(QDialog):
     
     def setup_ui(self):
         self.setWindowTitle("Impostazioni")
-        self.setFixedWidth(900)  # Larghezza aumentata per modalità base
+        # Imposta dimensioni fisse in base alla modalità
+        if self.power_user_mode:
+            self.setFixedSize(1300, 800)
+        else:
+            self.setFixedSize(1300, 450)
         self.setModal(True)
+        
+        # Centra la finestra allo schermo
+        self.center_on_screen()
         
         # Applica SOLO il tema light
         from ui.styles import MAIN_STYLE
@@ -90,7 +99,8 @@ class SettingsDialog(QDialog):
         self.power_user_layout.setColumnStretch(1, 1)
         self.power_user_layout.setColumnStretch(2, 1)
         self.create_power_user_section(self.power_user_layout)
-        self.power_user_widget.setVisible(False)
+        # Mostra/nascondi in base alla modalità salvata
+        self.power_user_widget.setVisible(self.power_user_mode)
         layout.addWidget(self.power_user_widget)
         layout.addStretch()
         
@@ -130,7 +140,7 @@ class SettingsDialog(QDialog):
         """)
         text_layout.addWidget(title)
         
-        subtitle = QLabel("Modalità Base")
+        subtitle = QLabel("Modalità Base" if not self.power_user_mode else "Modalità Power User - Impostazioni Avanzate")
         subtitle.setStyleSheet(f"""
             font-size: 13px;
             color: {get_caption_text_color()};
@@ -151,6 +161,7 @@ class SettingsDialog(QDialog):
         mode_layout.addWidget(mode_label)
         
         self.mode_toggle = ToggleSwitch()
+        self.mode_toggle.setChecked(self.power_user_mode)  # Imposta lo stato salvato
         self.mode_toggle.toggled.connect(self.toggle_power_user_mode)
         mode_layout.addWidget(self.mode_toggle)
         
@@ -164,12 +175,18 @@ class SettingsDialog(QDialog):
         # Aggiorna il sottotitolo
         if checked:
             self.mode_subtitle.setText("Modalità Power User - Impostazioni Avanzate")
-            # Allarga la finestra per modalità Power User (3 colonne)
-            self.setFixedWidth(1300)
+            # Dimensioni fisse per modalità Power User
+            self.setFixedSize(1300, 800)
         else:
             self.mode_subtitle.setText("Modalità Base")
-            # Restringe la finestra per modalità Base (2 colonne)
-            self.setFixedWidth(900)
+            # Dimensioni fisse per modalità Base
+            self.setFixedSize(1300, 450)
+        
+        # Salva lo stato della modalità power user
+        self.save_power_user_mode_state()
+        
+        # Ri-centra la finestra dopo il ridimensionamento
+        self.center_on_screen()
     
     def create_gemini_api_key_section(self, parent_layout):
         """Crea la sezione Google Gemini API Key"""
@@ -642,3 +659,28 @@ class SettingsDialog(QDialog):
         
         ollama_model = os.environ.get('OLLAMA_MODEL', 'llama3.2:latest')
         self.ollama_model_input.setText(ollama_model)
+    
+    def center_on_screen(self):
+        """Centra la finestra sullo schermo"""
+        from PyQt6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = (screen.height() - self.height()) // 2
+        self.move(x, y)
+    
+    def load_power_user_mode_state(self):
+        """Carica lo stato della modalità power user dal file .env"""
+        try:
+            if os.path.exists('.env'):
+                with open('.env', 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if line.strip().startswith('POWER_USER_MODE='):
+                            value = line.split('=', 1)[1].strip().lower()
+                            self.power_user_mode = value == 'true'
+                            break
+        except Exception as e:
+            print(f"Errore durante il caricamento dello stato power user: {e}")
+    
+    def save_power_user_mode_state(self):
+        """Salva lo stato della modalità power user nel file .env"""
+        self._save_env_variable('POWER_USER_MODE', 'true' if self.power_user_mode else 'false')
