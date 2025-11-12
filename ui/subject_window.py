@@ -92,9 +92,8 @@ class Snackbar(QFrame):
         self.setProperty("class", "snackbar")
         self.setFixedHeight(50)
         
-        # Stile
-        theme = 'dark'  # Per ora fisso, puoi passarlo come parametro
-        bg_color = "#323232" if theme == 'dark' else "#424242"
+        # Stile - SOLO LIGHT
+        bg_color = "#424242"
         text_color = "#FFFFFF"
         
         self.setStyleSheet(f"""
@@ -1343,12 +1342,16 @@ class SubjectWindow(QMainWindow):
     def update_flashcard_display(self):
         """Aggiorna la visualizzazione della flashcard corrente"""
         if not self.flashcards:
-            # Mostra messaggio quando non ci sono flashcard
+            # Nascondi la card quando non ci sono flashcard
+            self.flashcard_card.hide()
             self.flashcard_counter.setText("0 / 0")
-            self.flashcard_label.setText("Nessuna flashcard disponibile\n\nGenera alcune flashcard dalla tab 'Genera'")
-            self.hint_label.setText("")
-            self.difficulty_label.hide()
+            # Mostra solo un messaggio testuale senza la card
+            self.hint_label.setText("Nessuna flashcard disponibile. Genera alcune flashcard dalla tab 'Genera'.")
+            self.hint_label.show()
             return
+        
+        # Mostra la card se era nascosta
+        self.flashcard_card.show()
         
         # Aggiorna contatore
         total = len(self.flashcards)
