@@ -482,8 +482,8 @@ class SubjectWindow(QMainWindow):
         """Tab per gestire i documenti della materia"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(24)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
         
         upload_card = self.create_upload_card()
         layout.addWidget(upload_card)
@@ -650,17 +650,17 @@ class SubjectWindow(QMainWindow):
         """Tab per generare flashcard con AI"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(32)
+        layout.setContentsMargins(20, 30, 20, 30)
+        layout.setSpacing(24)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         
         gen_card = QFrame()
         gen_card.setProperty("class", "card")
-        gen_card.setFixedWidth(650)
+        gen_card.setFixedWidth(900)
         
         gen_layout = QVBoxLayout(gen_card)
-        gen_layout.setContentsMargins(40, 40, 40, 40)
-        gen_layout.setSpacing(24)
+        gen_layout.setContentsMargins(30, 30, 30, 30)
+        gen_layout.setSpacing(20)
         
         # Rimosso: icon_label con bacchetta magica
         # Rimosso: title_label "Genera Flashcard con AI"
@@ -713,27 +713,27 @@ class SubjectWindow(QMainWindow):
         self.num_cards_spin.setMinimumHeight(44)
         self.num_cards_spin.setMinimumWidth(120)
         
-        # Stile migliorato per il QSpinBox
+        # Stile migliorato per il QSpinBox - bordi sottili e colori coerenti
         self.num_cards_spin.setStyleSheet(f"""
             QSpinBox {{
                 font-size: 16px;
                 font-weight: 600;
                 padding: 8px 12px;
-                border: 2px solid {primary_color}40;
+                border: 1px solid {primary_color}60;
                 border-radius: 8px;
                 background-color: {doc_bg};
                 color: {get_text_color()};
             }}
             QSpinBox:focus {{
-                border: 2px solid {primary_color};
+                border: 1px solid {primary_color};
             }}
             QSpinBox::up-button, QSpinBox::down-button {{
                 width: 32px;
                 border-radius: 4px;
-                background-color: {primary_color}20;
+                background-color: {primary_color};
             }}
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
-                background-color: {primary_color}40;
+                background-color: {primary_color}DD;
             }}
             QSpinBox::up-arrow {{
                 image: none;
@@ -742,7 +742,7 @@ class SubjectWindow(QMainWindow):
                 height: 0;
                 border-left: 6px solid transparent;
                 border-right: 6px solid transparent;
-                border-bottom: 8px solid {primary_color};
+                border-bottom: 8px solid #FFFFFF;
                 margin: 0 auto;
             }}
             QSpinBox::down-arrow {{
@@ -752,7 +752,7 @@ class SubjectWindow(QMainWindow):
                 height: 0;
                 border-left: 6px solid transparent;
                 border-right: 6px solid transparent;
-                border-top: 8px solid {primary_color};
+                border-top: 8px solid #FFFFFF;
                 margin: 0 auto;
             }}
         """)
@@ -850,8 +850,8 @@ class SubjectWindow(QMainWindow):
         """Tab per visualizzare e gestire le flashcard"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(40, 40, 40, 40)
-        layout.setSpacing(24)
+        layout.setContentsMargins(20, 30, 20, 30)
+        layout.setSpacing(20)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         
         header_layout = QHBoxLayout()
@@ -900,7 +900,7 @@ class SubjectWindow(QMainWindow):
         """Crea la card per visualizzare la flashcard corrente"""
         card = QFrame()
         card.setProperty("class", "flashcard")
-        card.setFixedWidth(600) 
+        card.setFixedWidth(900) 
         card.setCursor(Qt.CursorShape.PointingHandCursor)
         
         card.mousePressEvent = lambda e: self.flip_card()
