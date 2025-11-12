@@ -1,14 +1,19 @@
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QLineEdit, QTextEdit, QComboBox,
-                             QMessageBox, QCheckBox, QWidget)
-from PyQt6.QtCore import Qt, pyqtSignal, QFileSystemWatcher, QTimer, QPropertyAnimation, QEasingCurve, pyqtProperty, QPointF
-from PyQt6.QtGui import QColor, QPainter, QPen, QBrush
-from database.db_manager import DatabaseManager
-# AGGIORNATO: Importa tutte le funzioni di stile necessarie
-from ui.styles import (SUBJECT_COLORS, get_text_color, get_secondary_text_color, 
-                       get_caption_text_color, get_card_background, get_icon_color)
-from ui.icons import IconProvider
 import os
+
+from PyQt6.QtCore import (QEasingCurve, QFileSystemWatcher, QPointF,
+                          QPropertyAnimation, Qt, QTimer, pyqtProperty,
+                          pyqtSignal)
+from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QHBoxLayout,
+                             QLabel, QLineEdit, QMessageBox, QPushButton,
+                             QTextEdit, QVBoxLayout, QWidget)
+
+from database.db_manager import DatabaseManager
+from ui.icons import IconProvider
+# AGGIORNATO: Importa tutte le funzioni di stile necessarie
+from ui.styles import (SUBJECT_COLORS, get_caption_text_color,
+                       get_card_background, get_icon_color,
+                       get_secondary_text_color, get_text_color)
 
 
 class ToggleSwitch(QWidget):
@@ -304,7 +309,7 @@ class SettingsDialog(QDialog):
     
     def setup_ui(self):
         self.setWindowTitle("Impostazioni")
-        self.setFixedSize(600, 300)  # Ridotta l'altezza verticalmente
+        self.setFixedSize(600, 400)  # Aumentata l'altezza per contenere i pulsanti cestino
         self.setModal(True)
         
         # Applica il tema al dialog
@@ -361,6 +366,7 @@ class SettingsDialog(QDialog):
     
     def create_api_key_section(self, parent_layout):
         """Crea la sezione API Key"""
+        # Google Gemini API Key
         api_label = QLabel("Google Gemini API Key *")
         api_label.setStyleSheet(f"""
             font-size: 14px; 
@@ -402,7 +408,93 @@ class SettingsDialog(QDialog):
         self.show_btn.clicked.connect(self.toggle_api_visibility)
         input_layout.addWidget(self.show_btn)
         
+        # Pulsante cestino per eliminare API key
+        self.delete_gemini_btn = QPushButton()
+        self.delete_gemini_btn.setIcon(IconProvider.get_icon('trash', 16, '#FFFFFF'))
+        self.delete_gemini_btn.setFixedSize(44, 44)
+        self.delete_gemini_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #EF4444;
+                border: none;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #DC2626;
+            }
+            QPushButton:pressed {
+                background-color: #B91C1C;
+            }
+        """)
+        self.delete_gemini_btn.clicked.connect(self.delete_gemini_api_key)
+        input_layout.addWidget(self.delete_gemini_btn)
+        
         parent_layout.addLayout(input_layout)
+        
+        # Spazio tra le due sezioni
+        parent_layout.addSpacing(20)
+        
+        # Tavily API Key
+        tavily_label = QLabel("Tavily API Key (opzionale)")
+        tavily_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+        """)
+        parent_layout.addWidget(tavily_label)
+        
+        tavily_link_label = QLabel(
+            f'<a href="https://tavily.com/" '
+            f'style="color: #8B5CF6; text-decoration: underline;">'
+            f'Ottieni la tua API key</a> - per ricerca web avanzata'
+        )
+        tavily_link_label.setOpenExternalLinks(True)
+        tavily_link_label.setStyleSheet(f"""
+            font-size: 13px;
+            color: {get_caption_text_color()};
+            padding: 4px 0;
+        """)
+        parent_layout.addWidget(tavily_link_label)
+        
+        tavily_input_layout = QHBoxLayout()
+        tavily_input_layout.setSpacing(8)
+        
+        self.tavily_api_input = QLineEdit()
+        self.tavily_api_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.tavily_api_input.setPlaceholderText("Inserisci la tua Tavily API key...")
+        self.tavily_api_input.setMinimumHeight(44)
+        self.tavily_api_input.textChanged.connect(self.on_tavily_api_key_changed)
+        tavily_input_layout.addWidget(self.tavily_api_input)
+        
+        # Pulsante mostra/nascondi per Tavily
+        self.show_tavily_btn = QPushButton()
+        self.show_tavily_btn.setIcon(IconProvider.get_icon('eye', 16, get_icon_color()))
+        self.show_tavily_btn.setProperty("class", "secondary")
+        self.show_tavily_btn.setFixedWidth(100)
+        self.show_tavily_btn.setMinimumHeight(44)
+        self.show_tavily_btn.clicked.connect(self.toggle_tavily_api_visibility)
+        tavily_input_layout.addWidget(self.show_tavily_btn)
+        
+        # Pulsante cestino per eliminare Tavily API key
+        self.delete_tavily_btn = QPushButton()
+        self.delete_tavily_btn.setIcon(IconProvider.get_icon('trash', 16, '#FFFFFF'))
+        self.delete_tavily_btn.setFixedSize(44, 44)
+        self.delete_tavily_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #EF4444;
+                border: none;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #DC2626;
+            }
+            QPushButton:pressed {
+                background-color: #B91C1C;
+            }
+        """)
+        self.delete_tavily_btn.clicked.connect(self.delete_tavily_api_key)
+        tavily_input_layout.addWidget(self.delete_tavily_btn)
+        
+        parent_layout.addLayout(tavily_input_layout)
         
         # Nota informativa rimossa
     
@@ -417,6 +509,17 @@ class SettingsDialog(QDialog):
         else:
             self.api_input.setEchoMode(QLineEdit.EchoMode.Password)
             self.show_btn.setIcon(IconProvider.get_icon('eye', 16, icon_color))
+    
+    def toggle_tavily_api_visibility(self):
+        """Toggle della visibilità dell'API key Tavily"""
+        icon_color = get_icon_color()
+
+        if self.tavily_api_input.echoMode() == QLineEdit.EchoMode.Password:
+            self.tavily_api_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            self.show_tavily_btn.setIcon(IconProvider.get_icon('eye-slash', 16, icon_color))
+        else:
+            self.tavily_api_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.show_tavily_btn.setIcon(IconProvider.get_icon('eye', 16, icon_color))
     
     def on_theme_toggle(self, checked):
         """Gestisce il cambio immediato del tema quando viene cliccato il toggle (disabilitato)"""
@@ -438,6 +541,26 @@ class SettingsDialog(QDialog):
             del os.environ['GEMINI_API_KEY']
         
         # Salva nel file .env
+        self._save_env_variable('GEMINI_API_KEY', api_key)
+    
+    def on_tavily_api_key_changed(self, text):
+        """Salva automaticamente la Tavily API key nel file .env quando cambia il contenuto"""
+        if self.updating_api_key:
+            return
+            
+        api_key = text.strip()
+        
+        # Aggiorna l'ambiente
+        if api_key:
+            os.environ['TAVILY_API_KEY'] = api_key
+        elif 'TAVILY_API_KEY' in os.environ:
+            del os.environ['TAVILY_API_KEY']
+        
+        # Salva nel file .env
+        self._save_env_variable('TAVILY_API_KEY', api_key)
+    
+    def _save_env_variable(self, key: str, value: str):
+        """Salva una variabile d'ambiente nel file .env"""
         try:
             env_path = '.env'
             
@@ -448,19 +571,21 @@ class SettingsDialog(QDialog):
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#') and '=' in line:
-                            key, value = line.split('=', 1)
-                            key = key.strip()
-                            if key != 'GEMINI_API_KEY':
-                                existing_vars[key] = value.strip()
+                            var_key, var_value = line.split('=', 1)
+                            var_key = var_key.strip()
+                            if var_key != key:
+                                existing_vars[var_key] = var_value.strip()
             
             # Scrivi tutte le variabili
             with open(env_path, 'w', encoding='utf-8') as f:
-                if api_key:
-                    f.write(f'GEMINI_API_KEY={api_key}\n')
-                for key, value in existing_vars.items():
+                # Scrivi la variabile che stiamo salvando (se non vuota)
+                if value:
                     f.write(f'{key}={value}\n')
+                # Scrivi tutte le altre variabili
+                for k, v in existing_vars.items():
+                    f.write(f'{k}={v}\n')
         except Exception as e:
-            print(f"Errore durante il salvataggio dell'API key: {e}")
+            print(f"Errore durante il salvataggio di {key}: {e}")
     
     def on_env_file_changed(self, path):
         """Aggiorna la textbox quando il file .env viene modificato esternamente"""
@@ -489,11 +614,43 @@ class SettingsDialog(QDialog):
         finally:
             self.updating_api_key = False
     
+    def delete_gemini_api_key(self):
+        """Elimina la Gemini API key"""
+        reply = QMessageBox.question(
+            self,
+            "Elimina API Key",
+            "Sei sicuro di voler eliminare la Gemini API key?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.api_input.clear()
+            if 'GEMINI_API_KEY' in os.environ:
+                del os.environ['GEMINI_API_KEY']
+            self._save_env_variable('GEMINI_API_KEY', '')
+    
+    def delete_tavily_api_key(self):
+        """Elimina la Tavily API key"""
+        reply = QMessageBox.question(
+            self,
+            "Elimina API Key",
+            "Sei sicuro di voler eliminare la Tavily API key?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.tavily_api_input.clear()
+            if 'TAVILY_API_KEY' in os.environ:
+                del os.environ['TAVILY_API_KEY']
+            self._save_env_variable('TAVILY_API_KEY', '')
+    
     def load_settings(self):
         """Carica le impostazioni salvate"""
         # Sezione tema dark mode rimossa
         
-        # Cerca prima nell'ambiente
+        # Carica Gemini API key
         api_key = os.environ.get('GEMINI_API_KEY', '')
         
         # Se non c'è, prova a leggere da .env
@@ -510,6 +667,23 @@ class SettingsDialog(QDialog):
         
         if api_key:
             self.api_input.setText(api_key)
+        
+        # Carica Tavily API key
+        tavily_key = os.environ.get('TAVILY_API_KEY', '')
+        
+        if not tavily_key:
+            try:
+                with open('.env', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    for line in content.split('\n'):
+                        if line.startswith('TAVILY_API_KEY='):
+                            tavily_key = line.split('=', 1)[1].strip()
+                            break
+            except FileNotFoundError:
+                pass
+        
+        if tavily_key:
+            self.tavily_api_input.setText(tavily_key)
     
     # Metodo save_settings rimosso - il salvataggio è automatico
 

@@ -13,7 +13,8 @@ from typing import Any, Dict, List
 import requests
 from google import genai
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
+from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
+                                  PointStruct, VectorParams)
 
 
 # ==========================
@@ -36,26 +37,34 @@ class OllamaEmbeddingFunction:
         if isinstance(texts, str):
             texts = [texts]
 
-        resp = requests.post(
-            f"{self.base_url}/embeddings",
-            headers=self._headers,
-            json={"model": self.model_name, "input": texts},
-            timeout=120,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        embeddings = [item.get("embedding") for item in data.get("data", [])]
-        
-        out = []
-        for emb in embeddings:
-            if emb is None:
-                continue
-            try:
-                out.append([float(x) for x in emb])
-            except Exception:
-                vals = emb.get("values") if isinstance(emb, dict) else None
-                out.append([float(x) for x in (vals or [])])
-        return out
+        try:
+            resp = requests.post(
+                f"{self.base_url}/embeddings",
+                headers=self._headers,
+                json={"model": self.model_name, "input": texts},
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            embeddings = [item.get("embedding") for item in data.get("data", [])]
+            
+            out = []
+            for emb in embeddings:
+                if emb is None:
+                    continue
+                try:
+                    out.append([float(x) for x in emb])
+                except Exception:
+                    vals = emb.get("values") if isinstance(emb, dict) else None
+                    out.append([float(x) for x in (vals or [])])
+            return out
+        except requests.exceptions.ConnectionError as e:
+            raise ConnectionError(
+                f"Impossibile connettersi a Ollama su {self.base_url}. "
+                "Assicurati che Ollama sia in esecuzione (es. 'ollama serve')."
+            ) from e
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Errore durante la richiesta di embedding a Ollama: {e}") from e
 
 
 class GeminiEmbeddingFunction:
@@ -261,8 +270,19 @@ class RAGService:
     def _get_embedding_dim(self) -> int:
         """Determina la dimensione degli embedding"""
         if self._embedding_dim is None:
-            test_emb = self.embedder.embed(["test"])
-            self._embedding_dim = len(test_emb[0]) if test_emb else 768
+            try:
+                test_emb = self.embedder.embed(["test"])
+                self._embedding_dim = len(test_emb[0]) if test_emb else 768
+            except ConnectionError as e:
+                print(f"[RAG ERRORE] {e}")
+                raise ConnectionError(
+                    "Impossibile connettersi al servizio di embedding. "
+                    "Se usi Ollama, assicurati che sia in esecuzione con 'ollama serve'. "
+                    "Se usi Gemini, verifica che la chiave API sia corretta."
+                ) from e
+            except Exception as e:
+                print(f"[RAG ERRORE] Errore durante il calcolo della dimensione embedding: {e}")
+                raise
         return self._embedding_dim
 
     def _collection_name(self, subject_id: int, subject_name: str) -> str:

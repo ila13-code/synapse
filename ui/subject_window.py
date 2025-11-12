@@ -7,8 +7,8 @@ from PyQt6.QtGui import QColor, QFont, QTextOption
 from PyQt6.QtWidgets import (QCheckBox, QFileDialog, QFrame,
                              QGraphicsOpacityEffect, QGridLayout, QHBoxLayout,
                              QLabel, QMainWindow, QMessageBox, QProgressDialog,
-                             QPushButton, QScrollArea, QSpinBox, QTabWidget, QTextEdit,
-                             QVBoxLayout, QWidget)
+                             QPushButton, QScrollArea, QSpinBox, QTabWidget,
+                             QTextEdit, QVBoxLayout, QWidget)
 
 from config.env_loader import get_env_bool
 from database.db_manager import DatabaseManager
@@ -18,8 +18,8 @@ from services.ai_service import AIService
 from services.export_service import ExportService
 from services.file_service import FileService
 from services.rag_service import RAGService
-from services.web_search_service import WebSearchService
 from services.reflection_service import ReflectionService
+from services.web_search_service import WebSearchService
 from ui.dialogs import EditFlashcardDialog, ToggleSwitch
 from ui.icons import IconProvider
 from ui.styles import (get_caption_text_color, get_card_background,
@@ -157,7 +157,7 @@ class Snackbar(QFrame):
 class GenerationThread(QThread):
     """Thread per generare flashcard con RAG e Reflection"""
     finished = pyqtSignal(list)
-    error = pyqtSignal(str)
+    error = pyqtSignal(str, str)  # (titolo, messaggio)
     progress = pyqtSignal(int, str)  # (percentuale, messaggio)
     
     def __init__(self, ai_service, rag_service, reflection_service, 
@@ -199,7 +199,7 @@ class GenerationThread(QThread):
             print("======================================================")
             
             # EMETTI SEGNALE DI ERRORE per mostrarlo nella UI
-            self.error.emit(f"Errore durante la generazione: {str(e)}")
+            self.error.emit("Errore durante la generazione", str(e))
     
     def _generate_traditional(self):
         """Generazione tradizionale (Context Stuffing) - metodo attuale"""
@@ -394,6 +394,16 @@ class GenerationThread(QThread):
             self.progress.emit(100, "Generazione completata!")
             return flashcards
 
+        except ConnectionError as e:
+            print("======================================================")
+            print(f"ERRORE CONNESSIONE in '_generate_with_rag': {e}")
+            print("======================================================")
+            # Messaggio utente più chiaro
+            self.error.emit(
+                "Servizio di embedding non disponibile",
+                str(e)
+            )
+            return []
         except Exception as e:
             print("======================================================")
             print(f"ERRORE CRITICO in '_generate_with_rag': {e}")
@@ -766,7 +776,14 @@ class SubjectWindow(QMainWindow):
         title.setStyleSheet(get_text_label_style(14, 600))
         text_layout.addWidget(title)
         
-        desc = QLabel("Integra informazioni aggiornate dal web")
+        # Verifica se TAVILY_API_KEY è presente
+        has_tavily_key = bool(os.environ.get('TAVILY_API_KEY', '').strip())
+        
+        desc_text = "Integra informazioni aggiornate dal web"
+        if not has_tavily_key:
+            desc_text = "Richiede TAVILY_API_KEY (configura nelle impostazioni)"
+        
+        desc = QLabel(desc_text)
         desc.setStyleSheet(get_caption_label_style(12))
         text_layout.addWidget(desc)
         
@@ -774,6 +791,10 @@ class SubjectWindow(QMainWindow):
         layout.addStretch()
         
         self.web_search_checkbox = ToggleSwitch()
+        # Disabilita il toggle se non c'è la chiave
+        if not has_tavily_key:
+            self.web_search_checkbox.setEnabled(False)
+            self.web_search_checkbox.setToolTip("Configura TAVILY_API_KEY nelle impostazioni per abilitare")
         layout.addWidget(self.web_search_checkbox)
         
         return frame
@@ -1205,7 +1226,7 @@ class SubjectWindow(QMainWindow):
             lambda cards: self.on_generation_complete(cards, progress)
         )
         self.generation_thread.error.connect(
-            lambda error: self.on_generation_error(error, progress)
+            lambda title, msg: self.on_generation_error(title, msg, progress)
         )
         self.generation_thread.progress.connect(
             lambda pct, msg: self.on_generation_progress(progress, pct, msg)
@@ -1254,13 +1275,13 @@ class SubjectWindow(QMainWindow):
         self.load_flashcards()
         self.tabs.setCurrentIndex(2)  # Passa al tab flashcard
     
-    def on_generation_error(self, error, progress):
+    def on_generation_error(self, title, message, progress):
         """Chiamata in caso di errore durante la generazione"""
         progress.close()
         QMessageBox.critical(
             self,
-            "Errore",
-            f"Errore durante la generazione: {error}"
+            title,
+            message
         )
     
     # ==================== GESTIONE FLASHCARD ====================
