@@ -710,6 +710,53 @@ class SubjectWindow(QMainWindow):
             default_num = 10
         self.num_cards_spin.setValue(max(1, min(100, default_num)))
         self.num_cards_spin.setToolTip("Numero massimo di flashcard da generare")
+        self.num_cards_spin.setMinimumHeight(44)
+        self.num_cards_spin.setMinimumWidth(120)
+        
+        # Stile migliorato per il QSpinBox
+        self.num_cards_spin.setStyleSheet(f"""
+            QSpinBox {{
+                font-size: 16px;
+                font-weight: 600;
+                padding: 8px 12px;
+                border: 2px solid {primary_color}40;
+                border-radius: 8px;
+                background-color: {doc_bg};
+                color: {get_text_color()};
+            }}
+            QSpinBox:focus {{
+                border: 2px solid {primary_color};
+            }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                width: 32px;
+                border-radius: 4px;
+                background-color: {primary_color}20;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background-color: {primary_color}40;
+            }}
+            QSpinBox::up-arrow {{
+                image: none;
+                border: none;
+                width: 0;
+                height: 0;
+                border-left: 6px solid transparent;
+                border-right: 6px solid transparent;
+                border-bottom: 8px solid {primary_color};
+                margin: 0 auto;
+            }}
+            QSpinBox::down-arrow {{
+                image: none;
+                border: none;
+                width: 0;
+                height: 0;
+                border-left: 6px solid transparent;
+                border-right: 6px solid transparent;
+                border-top: 8px solid {primary_color};
+                margin: 0 auto;
+            }}
+        """)
+        
         # Persisti la scelta dell'utente
         self.num_cards_spin.valueChanged.connect(
             lambda v: self.db.set_setting('flashcards_per_generation', str(v))
@@ -1296,10 +1343,14 @@ class SubjectWindow(QMainWindow):
     def update_flashcard_display(self):
         """Aggiorna la visualizzazione della flashcard corrente"""
         if not self.flashcards:
-            # ... (testi e layout invariati)
+            # Mostra messaggio quando non ci sono flashcard
+            self.flashcard_counter.setText("0 / 0")
+            self.flashcard_label.setText("Nessuna flashcard disponibile\n\nGenera alcune flashcard dalla tab 'Genera'")
+            self.hint_label.setText("")
+            self.difficulty_label.hide()
             return
         
-        # ... (Aggiorna contatore invariato)
+        # Aggiorna contatore
         total = len(self.flashcards)
         current = self.current_flashcard_index + 1
         self.flashcard_counter.setText(f"{current} / {total}")
@@ -1403,13 +1454,23 @@ class SubjectWindow(QMainWindow):
             try:
                 self.db.delete_flashcard(card['id'])
                 
-                # Ricarica e aggiusta l'indice
+                # Rimuovi la flashcard dalla lista
                 self.flashcards.pop(self.current_flashcard_index)
-                if self.current_flashcard_index >= len(self.flashcards):
-                    self.current_flashcard_index = max(0, len(self.flashcards) - 1)
                 
+                # Aggiorna l'indice
+                if len(self.flashcards) == 0:
+                    # Se non ci sono più flashcard, resetta l'indice
+                    self.current_flashcard_index = 0
+                elif self.current_flashcard_index >= len(self.flashcards):
+                    # Se l'indice è fuori range, vai all'ultima flashcard
+                    self.current_flashcard_index = len(self.flashcards) - 1
+                
+                # Reset del flip
                 self.is_flipped = False
+                
+                # Aggiorna l'UI
                 self.update_flashcard_display()
+                
             except Exception as e:
                 QMessageBox.warning(
                     self,

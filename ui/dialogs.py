@@ -4,10 +4,12 @@ from PyQt6.QtCore import (QEasingCurve, QFileSystemWatcher, QPointF,
                           QPropertyAnimation, Qt, QTimer, pyqtProperty,
                           pyqtSignal)
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
-from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QHBoxLayout,
-                             QLabel, QLineEdit, QMessageBox, QPushButton,
-                             QTextEdit, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog, QFrame,
+                             QHBoxLayout, QLabel, QLineEdit, QMessageBox,
+                             QPushButton, QScrollArea, QTextEdit, QVBoxLayout,
+                             QWidget)
 
+from config.env_loader import get_env_bool
 from database.db_manager import DatabaseManager
 from ui.icons import IconProvider
 # AGGIORNATO: Importa tutte le funzioni di stile necessarie
@@ -24,6 +26,7 @@ class ToggleSwitch(QWidget):
         super().__init__(parent)
         self._checked = False
         self._circle_position = 0.0
+        self._enabled = True
         self.setFixedSize(50, 26)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         
@@ -51,7 +54,18 @@ class ToggleSwitch(QWidget):
     def isChecked(self):
         return self._checked
     
+    def setEnabled(self, enabled):
+        self._enabled = enabled
+        if enabled:
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+        else:
+            self.setCursor(Qt.CursorShape.ForbiddenCursor)
+        self.update()
+        super().setEnabled(enabled)
+    
     def mousePressEvent(self, event):
+        if not self._enabled:
+            return
         self._checked = not self._checked
         self.animation.setStartValue(self._circle_position)
         self.animation.setEndValue(1.0 if self._checked else 0.0)
@@ -62,15 +76,22 @@ class ToggleSwitch(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # Background track
-        track_color = QColor('#8B5CF6') if self._checked else QColor('#D1D5DB')
+        # Background track - grigio se disabilitato
+        if not self._enabled:
+            track_color = QColor('#9CA3AF')  # Grigio chiaro
+        elif self._checked:
+            track_color = QColor('#8B5CF6')  # Viola se attivo
+        else:
+            track_color = QColor('#D1D5DB')  # Grigio se inattivo
+        
         painter.setBrush(QBrush(track_color))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawRoundedRect(0, 0, 50, 26, 13, 13)
         
-        # Circle (pallina)
+        # Circle (pallina) - più scura se disabilitato
         circle_x = 3 + (50 - 26) * self._circle_position
-        painter.setBrush(QBrush(QColor('#FFFFFF')))
+        circle_color = QColor('#E5E7EB') if not self._enabled else QColor('#FFFFFF')
+        painter.setBrush(QBrush(circle_color))
         painter.drawEllipse(int(circle_x), 3, 20, 20)
 
 
@@ -294,6 +315,7 @@ class SettingsDialog(QDialog):
         self.db = DatabaseManager()
         # Flag per evitare loop di aggiornamenti (deve essere inizializzato prima di connettere i segnali)
         self.updating_api_key = False
+        self.power_user_mode = False  # Modalità Power User disabilitata di default
         self.setup_ui()
         self.load_settings()
         
@@ -309,28 +331,46 @@ class SettingsDialog(QDialog):
     
     def setup_ui(self):
         self.setWindowTitle("Impostazioni")
-        self.setFixedSize(600, 400)  # Aumentata l'altezza per contenere i pulsanti cestino
+        self.setFixedWidth(600)
         self.setModal(True)
         
         # Applica il tema al dialog
         from ui.styles import get_theme_style
         self.setStyleSheet(get_theme_style())
         
-        layout = QVBoxLayout(self)
+        # Scroll area per contenere tutte le impostazioni
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        
+        container = QWidget()
+        layout = QVBoxLayout(container)
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(24)
         
-        # Header rimosso
-        
-        # Theme section
-        self.create_theme_section(layout)
+        # Header con toggle modalità
+        self.create_mode_toggle(layout)
         
         # API Key section
         self.create_api_key_section(layout)
         
+        # Power User section (inizialmente nascosta)
+        self.power_user_widget = QWidget()
+        self.power_user_layout = QVBoxLayout(self.power_user_widget)
+        self.power_user_layout.setContentsMargins(0, 0, 0, 0)
+        self.power_user_layout.setSpacing(24)
+        self.create_power_user_section(self.power_user_layout)
+        self.power_user_widget.setVisible(False)
+        layout.addWidget(self.power_user_widget)
+        
         layout.addStretch()
         
-        # Nessun pulsante di azione (rimossi Annulla e Salva)
+        scroll.setWidget(container)
+        
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll)
     
     def create_header(self, parent_layout):
         """Crea l'intestazione del dialog"""
@@ -357,6 +397,79 @@ class SettingsDialog(QDialog):
         
         header_layout.addLayout(text_layout)
         parent_layout.addLayout(header_layout)
+    
+    def create_mode_toggle(self, parent_layout):
+        """Crea il toggle per modalità Base/Power User"""
+        mode_frame = QFrame()
+        mode_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {get_card_background()};
+                border: 2px solid #8B5CF6;
+                border-radius: 12px;
+                padding: 16px;
+            }}
+        """)
+        
+        mode_layout = QHBoxLayout(mode_frame)
+        mode_layout.setSpacing(12)
+        
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, 'settings', 24, '#8B5CF6')
+        mode_layout.addWidget(icon_label)
+        
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(4)
+        
+        title = QLabel("Impostazioni")
+        title.setStyleSheet(f"""
+            font-size: 18px;
+            font-weight: 700;
+            color: {get_text_color()};
+        """)
+        text_layout.addWidget(title)
+        
+        subtitle = QLabel("Modalità Base")
+        subtitle.setStyleSheet(f"""
+            font-size: 13px;
+            color: {get_caption_text_color()};
+        """)
+        text_layout.addWidget(subtitle)
+        self.mode_subtitle = subtitle  # Salva riferimento per aggiornarlo
+        
+        mode_layout.addLayout(text_layout)
+        mode_layout.addStretch()
+        
+        # Toggle per modalità Power User
+        mode_label = QLabel("Power User")
+        mode_label.setStyleSheet(f"""
+            font-size: 14px;
+            font-weight: 600;
+            color: {get_secondary_text_color()};
+        """)
+        mode_layout.addWidget(mode_label)
+        
+        self.mode_toggle = ToggleSwitch()
+        self.mode_toggle.toggled.connect(self.toggle_power_user_mode)
+        mode_layout.addWidget(self.mode_toggle)
+        
+        parent_layout.addWidget(mode_frame)
+    
+    def toggle_power_user_mode(self, checked):
+        """Attiva/disattiva la modalità Power User"""
+        self.power_user_mode = checked
+        self.power_user_widget.setVisible(checked)
+        
+        # Aggiorna il sottotitolo
+        if checked:
+            self.mode_subtitle.setText("Modalità Power User - Impostazioni Avanzate")
+        else:
+            self.mode_subtitle.setText("Modalità Base")
+        
+        # Aggiorna l'altezza del dialog
+        if checked:
+            self.setFixedHeight(800)
+        else:
+            self.setFixedHeight(500)
     
     
     def create_theme_section(self, parent_layout):
@@ -497,6 +610,134 @@ class SettingsDialog(QDialog):
         parent_layout.addLayout(tavily_input_layout)
         
         # Nota informativa rimossa
+    
+    def create_power_user_section(self, parent_layout):
+        """Crea la sezione con parametri avanzati per Power User"""
+        # Separatore
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet(f"background-color: {get_caption_text_color()}30;")
+        parent_layout.addWidget(separator)
+        
+        # Titolo sezione
+        power_title = QLabel("⚡ Impostazioni Avanzate")
+        power_title.setStyleSheet(f"""
+            font-size: 16px;
+            font-weight: 700;
+            color: #8B5CF6;
+            padding: 8px 0;
+        """)
+        parent_layout.addWidget(power_title)
+        
+        # USE_RAG
+        rag_label = QLabel("Abilita RAG (Retrieval-Augmented Generation)")
+        rag_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+        """)
+        parent_layout.addWidget(rag_label)
+        
+        rag_desc = QLabel("Migliora la generazione usando la ricerca semantica sui documenti")
+        rag_desc.setStyleSheet(f"""
+            font-size: 12px;
+            color: {get_caption_text_color()};
+            padding-bottom: 8px;
+        """)
+        parent_layout.addWidget(rag_desc)
+        
+        rag_layout = QHBoxLayout()
+        self.rag_toggle = ToggleSwitch()
+        self.rag_toggle.toggled.connect(lambda checked: self._save_env_variable('USE_RAG', 'true' if checked else 'false'))
+        rag_layout.addWidget(self.rag_toggle)
+        rag_layout.addStretch()
+        parent_layout.addLayout(rag_layout)
+        
+        parent_layout.addSpacing(12)
+        
+        # USE_REFLECTION
+        reflection_label = QLabel("Abilita Reflection")
+        reflection_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+        """)
+        parent_layout.addWidget(reflection_label)
+        
+        reflection_desc = QLabel("Usa un processo iterativo di auto-critica per migliorare la qualità")
+        reflection_desc.setStyleSheet(f"""
+            font-size: 12px;
+            color: {get_caption_text_color()};
+            padding-bottom: 8px;
+        """)
+        parent_layout.addWidget(reflection_desc)
+        
+        reflection_layout = QHBoxLayout()
+        self.reflection_toggle = ToggleSwitch()
+        self.reflection_toggle.toggled.connect(lambda checked: self._save_env_variable('USE_REFLECTION', 'true' if checked else 'false'))
+        reflection_layout.addWidget(self.reflection_toggle)
+        reflection_layout.addStretch()
+        parent_layout.addLayout(reflection_layout)
+        
+        parent_layout.addSpacing(12)
+        
+        # OLLAMA_ENABLED
+        ollama_label = QLabel("Usa Ollama (LLM locale)")
+        ollama_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+        """)
+        parent_layout.addWidget(ollama_label)
+        
+        ollama_desc = QLabel("Connetti a un server Ollama locale invece di usare Google Gemini")
+        ollama_desc.setStyleSheet(f"""
+            font-size: 12px;
+            color: {get_caption_text_color()};
+            padding-bottom: 8px;
+        """)
+        parent_layout.addWidget(ollama_desc)
+        
+        ollama_layout = QHBoxLayout()
+        self.ollama_toggle = ToggleSwitch()
+        self.ollama_toggle.toggled.connect(lambda checked: self._save_env_variable('OLLAMA_ENABLED', 'true' if checked else 'false'))
+        ollama_layout.addWidget(self.ollama_toggle)
+        ollama_layout.addStretch()
+        parent_layout.addLayout(ollama_layout)
+        
+        parent_layout.addSpacing(12)
+        
+        # OLLAMA_BASE_URL
+        ollama_url_label = QLabel("Ollama Base URL")
+        ollama_url_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+        """)
+        parent_layout.addWidget(ollama_url_label)
+        
+        self.ollama_url_input = QLineEdit()
+        self.ollama_url_input.setPlaceholderText("http://localhost:11434")
+        self.ollama_url_input.setMinimumHeight(44)
+        self.ollama_url_input.textChanged.connect(lambda text: self._save_env_variable('OLLAMA_BASE_URL', text.strip()))
+        parent_layout.addWidget(self.ollama_url_input)
+        
+        parent_layout.addSpacing(12)
+        
+        # OLLAMA_MODEL
+        ollama_model_label = QLabel("Ollama Model Name")
+        ollama_model_label.setStyleSheet(f"""
+            font-size: 14px; 
+            font-weight: 600; 
+            color: {get_text_color()};
+        """)
+        parent_layout.addWidget(ollama_model_label)
+        
+        self.ollama_model_input = QLineEdit()
+        self.ollama_model_input.setPlaceholderText("llama3.2:latest")
+        self.ollama_model_input.setMinimumHeight(44)
+        self.ollama_model_input.textChanged.connect(lambda text: self._save_env_variable('OLLAMA_MODEL', text.strip()))
+        parent_layout.addWidget(self.ollama_model_input)
     
     def toggle_api_visibility(self):
         """Toggle della visibilità dell'API key"""
@@ -684,6 +925,22 @@ class SettingsDialog(QDialog):
         
         if tavily_key:
             self.tavily_api_input.setText(tavily_key)
+        
+        # Carica impostazioni Power User
+        use_rag = get_env_bool('USE_RAG', True)
+        self.rag_toggle.setChecked(use_rag)
+        
+        use_reflection = get_env_bool('USE_REFLECTION', True)
+        self.reflection_toggle.setChecked(use_reflection)
+        
+        ollama_enabled = get_env_bool('OLLAMA_ENABLED', False)
+        self.ollama_toggle.setChecked(ollama_enabled)
+        
+        ollama_url = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
+        self.ollama_url_input.setText(ollama_url)
+        
+        ollama_model = os.environ.get('OLLAMA_MODEL', 'llama3.2:latest')
+        self.ollama_model_input.setText(ollama_model)
     
     # Metodo save_settings rimosso - il salvataggio è automatico
 
