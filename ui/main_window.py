@@ -208,10 +208,21 @@ class MainWindow(QMainWindow):
         # Se siamo nella vista materia, aggiorna anche quella
         if self.stack.currentIndex() == 1 and self.current_subject_view:
             self.current_subject_view.apply_theme()
+    
+    def center_on_screen(self):
+        """Centra la finestra sullo schermo"""
+        from PyQt6.QtGui import QGuiApplication
+        screen = QGuiApplication.primaryScreen().geometry()
+        x = (screen.width() - self.width()) // 2
+        y = (screen.height() - self.height()) // 2
+        self.move(x, y)
         
     def setup_ui(self):
         self.setWindowTitle("Synapse - AI Flashcard Generator")
-        self.setMinimumSize(1200, 800)
+        self.setMinimumSize(1300, 800)
+        
+        # Centra la finestra allo schermo
+        self.center_on_screen()
         
         self.setStyleSheet(get_theme_style())
         
