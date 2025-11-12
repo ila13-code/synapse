@@ -4,7 +4,7 @@ ollama==0.6.0        # Libreria ufficiale Ollama
 PyQt6==6.10.0        # Interfaccia grafica
 PyPDF2==3.0.1        # Estrazione testo da PDF
 requests==2.32.5     # Chiamate HTTP (embeddings Ollama, ecc.)
-qdrant-client==1.7.0 # Database vettoriale embedded (funziona BENISSIMO su Windows!)
+qdrant-client==1.7.3 # bumped: 1.7.0 not available on PyPI; use available 1.7.3
 QtAwesome==1.4.0     # Icone Font Awesome (opzionale UI)
 tavily-python>=0.3.0,<1.0.0  
 
