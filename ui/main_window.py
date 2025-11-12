@@ -1,15 +1,18 @@
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QLabel, QPushButton, QScrollArea, QGridLayout, QFrame, 
-                             QMessageBox, QStackedWidget)
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QIcon, QFont
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel,
+                             QMainWindow, QMessageBox, QPushButton,
+                             QScrollArea, QStackedWidget, QVBoxLayout, QWidget)
+
 from database.db_manager import DatabaseManager
-# Importa le funzioni tema
-from ui.styles import (get_theme_style, get_theme_colors, get_text_color, 
-                       get_secondary_text_color, get_caption_text_color, get_icon_color, get_card_background) 
 from ui.dialogs import CreateSubjectDialog, SettingsDialog
-from ui.subject_window import SubjectWindow
 from ui.icons import IconProvider
+# Importa le funzioni tema
+from ui.styles import (get_caption_text_color, get_card_background,
+                       get_icon_color, get_secondary_text_color,
+                       get_text_color, get_theme_colors, get_theme_style)
+from ui.subject_window import SubjectWindow
+
 
 class SubjectCard(QFrame):
     """Widget per visualizzare una card materia"""
@@ -25,19 +28,8 @@ class SubjectCard(QFrame):
         text_color = get_text_color()
         card_bg = get_card_background()
         
-        # Ottieni il tema per decidere il colore hover
-        try:
-            from database.db_manager import DatabaseManager
-            db = DatabaseManager()
-            theme = db.get_setting('theme', 'light')
-        except:
-            theme = 'light'
-        
-        # Hover diverso per light e dark mode
-        if theme == 'dark':
-            hover_bg = "#222222"
-        else:
-            hover_bg = "#F5F5F5"
+        # SOLO LIGHT MODE
+        hover_bg = "#F5F5F5"
 
         self.setFixedSize(280, 200)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -352,16 +344,10 @@ class MainWindow(QMainWindow):
         card.setFixedSize(280, 200)
         card.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        # Usa le funzioni tema per i colori
+        # Usa le funzioni tema per i colori - SOLO LIGHT
         primary_color = '#8B5CF6'
         card_bg = get_card_background()
-        theme = self.db.get_setting('theme', 'light')
-        
-        # Hover diverso per light e dark mode
-        if theme == 'dark':
-            hover_bg = "#222222"
-        else:
-            hover_bg = "#F5F5F5"
+        hover_bg = "#F5F5F5"
         
         card.setStyleSheet(f"""
             QFrame {{
@@ -459,8 +445,7 @@ class MainWindow(QMainWindow):
     def show_settings(self):
         """Mostra il dialog delle impostazioni"""
         dialog = SettingsDialog(self)
-        # Connessione per l'hot reload del tema
-        dialog.theme_changed.connect(self.apply_theme) 
+        # Non serve più il collegamento al tema poiché usiamo solo il tema light
         dialog.exec()
     
     def show_subject_view(self, subject_data):

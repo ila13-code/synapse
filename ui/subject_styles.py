@@ -1,14 +1,11 @@
-from ui.styles import get_text_color, get_caption_text_color, get_card_background
+from ui.styles import (get_caption_text_color, get_card_background,
+                       get_text_color)
 
 
 def get_upload_card_style(theme):
-    """Stile per la card di upload documenti"""
-    if theme == 'dark':
-        upload_bg = "#0F0F0F"
-        border_color = "#3A3A3A"
-    else:
-        upload_bg = "#FFFFFF"
-        border_color = get_caption_text_color()
+    """Stile per la card di upload documenti - SOLO LIGHT"""
+    upload_bg = "#FFFFFF"
+    border_color = get_caption_text_color()
     
     return f"""
         QFrame {{
@@ -24,15 +21,10 @@ def get_upload_card_style(theme):
 
 
 def get_document_card_style(theme):
-    """Stile per le card dei documenti"""
-    if theme == 'dark':
-        card_bg = "#0F0F0F"
-        hover_bg = "#1A1A1A"
-        border_color = "#3A3A3A"
-    else:
-        card_bg = "#FFFFFF"
-        hover_bg = "#F5F5F5"
-        border_color = get_caption_text_color()
+    """Stile per le card dei documenti - SOLO LIGHT"""
+    card_bg = "#FFFFFF"
+    hover_bg = "#F5F5F5"
+    border_color = get_caption_text_color()
     
     return f"""
         QFrame {{
@@ -48,8 +40,8 @@ def get_document_card_style(theme):
 
 
 def get_documents_list_bg(theme):
-    """Sfondo per la lista documenti"""
-    return "#1A1A1A" if theme == 'dark' else "#FAFAFA"
+    """Sfondo per la lista documenti - SOLO LIGHT"""
+    return "#FAFAFA"
 
 
 def get_text_label_style(font_size, font_weight="normal"):

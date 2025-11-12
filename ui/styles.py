@@ -392,69 +392,45 @@ DIFFICULTY_COLORS = {
 
 # Funzioni per gestire i temi
 def get_current_theme():
-    """Ottiene il tema corrente dal database"""
-    try:
-        from database.db_manager import DatabaseManager
-        db = DatabaseManager()
-        theme = db.get_setting('theme', 'light')
-        return theme
-    except:
-        return 'light'  # Default in caso di errore
+    """Ottiene il tema corrente - SOLO LIGHT"""
+    return 'light'
 
 
 def get_theme_style():
-    """Restituisce lo stile CSS in base al tema corrente"""
-    theme = get_current_theme()
-    
-    if theme == 'dark':
-        from ui.styles_dark import DARK_STYLE
-        return DARK_STYLE
-    else:
-        return MAIN_STYLE
+    """Restituisce lo stile CSS - SOLO LIGHT"""
+    return MAIN_STYLE
 
 
 def get_theme_colors():
-    """Restituisce i colori delle materie in base al tema corrente"""
-    theme = get_current_theme()
-    
-    if theme == 'dark':
-        from ui.styles_dark import SUBJECT_COLORS_DARK, DIFFICULTY_COLORS_DARK
-        return SUBJECT_COLORS_DARK, DIFFICULTY_COLORS_DARK
-    else:
-        return SUBJECT_COLORS, DIFFICULTY_COLORS
+    """Restituisce i colori delle materie - SOLO LIGHT"""
+    return SUBJECT_COLORS, DIFFICULTY_COLORS
 
 
 def get_icon_color():
-    """Restituisce il colore delle icone in base al tema"""
-    theme = get_current_theme()
-    return '#E5E5E5' if theme == 'dark' else '#171717'  # Grigio molto chiaro in dark, quasi nero in light
+    """Restituisce il colore delle icone - SOLO LIGHT"""
+    return '#171717'  # quasi nero in light
 
 
 def get_text_color():
-    """Restituisce il colore del testo principale in base al tema"""
-    theme = get_current_theme()
-    return '#FFFFFF' if theme == 'dark' else '#000000'  # Bianco puro in dark, nero puro in light
+    """Restituisce il colore del testo principale - SOLO LIGHT"""
+    return '#000000'  # Nero puro in light
 
 
 def get_secondary_text_color():
-    """Restituisce il colore del testo secondario in base al tema"""
-    theme = get_current_theme()
-    return '#E5E5E5' if theme == 'dark' else '#171717'  # Grigio molto chiaro in dark, grigio molto scuro in light
+    """Restituisce il colore del testo secondario - SOLO LIGHT"""
+    return '#171717'  # grigio molto scuro in light
 
 
 def get_caption_text_color():
-    """Restituisce il colore del testo caption in base al tema"""
-    theme = get_current_theme()
-    return '#D1D1D1' if theme == 'dark' else '#262626'  # Grigio chiaro in dark, grigio scuro in light
+    """Restituisce il colore del testo caption - SOLO LIGHT"""
+    return '#262626'  # grigio scuro in light
 
 
 def get_background_color():
-    """Restituisce il colore di sfondo in base al tema"""
-    theme = get_current_theme()
-    return '#0F0F0F' if theme == 'dark' else '#FAFAFA'
+    """Restituisce il colore di sfondo - SOLO LIGHT"""
+    return '#FAFAFA'
 
 
 def get_card_background():
-    """Restituisce il colore di sfondo delle card in base al tema"""
-    theme = get_current_theme()
-    return '#1A1A1A' if theme == 'dark' else 'white'
+    """Restituisce il colore di sfondo delle card - SOLO LIGHT"""
+    return 'white'
