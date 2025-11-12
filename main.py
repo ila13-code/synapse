@@ -1,11 +1,14 @@
 import sys
-from PyQt6.QtWidgets import QApplication
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor
-from ui.main_window import MainWindow
-from database.db_manager import DatabaseManager
+from PyQt6.QtGui import QColor, QPalette
+from PyQt6.QtWidgets import QApplication
+
 from config.env_loader import load_env
-from ui.styles import get_theme_style, get_background_color, get_text_color
+from database.db_manager import DatabaseManager
+from ui.main_window import MainWindow
+from ui.styles import get_background_color, get_text_color, get_theme_style
+
 
 def main():
     # Carica variabili d'ambiente

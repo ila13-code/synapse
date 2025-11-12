@@ -417,7 +417,8 @@ class SettingsDialog(QDialog):
         
         ollama_toggle_layout = QHBoxLayout()
         self.ollama_toggle = ToggleSwitch()
-        self.ollama_toggle.toggled.connect(lambda checked: self._save_env_variable('OLLAMA_ENABLED', 'true' if checked else 'false'))
+        # Connetti a un handler che mostra/nasconde le impostazioni di Ollama
+        self.ollama_toggle.toggled.connect(self.toggle_ollama_enabled)
         ollama_toggle_layout.addWidget(self.ollama_toggle)
         ollama_toggle_layout.addStretch()
         col2_layout.addLayout(ollama_toggle_layout)
@@ -430,6 +431,8 @@ class SettingsDialog(QDialog):
         col3_layout = QVBoxLayout(col3)
         col3_layout.setContentsMargins(0, 0, 0, 0)
         col3_layout.setSpacing(12)
+        # Salva il widget delle impostazioni Ollama per poterlo mostrare/nascondere
+        self.ollama_settings_widget = col3
         
         # OLLAMA_BASE_URL
         ollama_url_label = QLabel("Ollama Base URL")
@@ -465,6 +468,22 @@ class SettingsDialog(QDialog):
         
         col3_layout.addStretch()
         parent_layout.addWidget(col3, 1, 2)
+
+    def toggle_ollama_enabled(self, checked: bool):
+        """Mostra o nasconde le impostazioni di Ollama e salva la preferenza (se non siamo in fase di caricamento)."""
+        # Mostra/nascondi i campi URL/Model
+        try:
+            self.ollama_settings_widget.setVisible(checked)
+        except Exception:
+            # In caso in cui il widget non sia ancora inizializzato
+            pass
+
+        # Evita di riscrivere .env mentre stiamo caricando le impostazioni
+        if getattr(self, '_loading_settings', False):
+            return
+
+        # Salva la variabile nel file .env
+        self._save_env_variable('OLLAMA_ENABLED', 'true' if checked else 'false')
     
     def toggle_api_visibility(self):
         """Toggle della visibilità dell'API key"""
@@ -609,6 +628,8 @@ class SettingsDialog(QDialog):
     
     def load_settings(self):
         """Carica le impostazioni salvate"""
+        # Evita che i signal dei toggle scrivano sul file .env durante il caricamento
+        self._loading_settings = True
         # Carica Gemini API key
         api_key = os.environ.get('GEMINI_API_KEY', '')
         
@@ -653,12 +674,19 @@ class SettingsDialog(QDialog):
         
         ollama_enabled = get_env_bool('OLLAMA_ENABLED', False)
         self.ollama_toggle.setChecked(ollama_enabled)
+        # Mostra o nasconde le impostazioni di Ollama in base allo stato
+        try:
+            self.ollama_settings_widget.setVisible(ollama_enabled)
+        except Exception:
+            pass
         
         ollama_url = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
         self.ollama_url_input.setText(ollama_url)
         
         ollama_model = os.environ.get('OLLAMA_MODEL', 'llama3.2:latest')
         self.ollama_model_input.setText(ollama_model)
+        # Fine del caricamento impostazioni
+        self._loading_settings = False
     
     def center_on_screen(self):
         """Centra la finestra sullo schermo"""
