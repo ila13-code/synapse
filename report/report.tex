@@ -124,7 +124,19 @@ Se la critica evidenzia difetti (rilevati tramite keyword matching come "non foc
 Il modello è forzato a produrre una nuova versione che risolva specificamente i problemi segnalati.
 
 \section{Retrieval-Augmented Generation (RAG)}
-Il modulo RAG (\texttt{rag\_service.py}) è responsabile della gestione della conoscenza. Assicura che l'AI non "inventi" fatti, ma si basi sui PDF caricati dall'utente.
+Il modulo RAG (\texttt{rag\_service.py}) è il cuore della "memoria" di Synapse. Questa tecnologia permette di superare il limite della conoscenza statica degli LLM, fornendo accesso dinamico ai documenti caricati dall'utente (PDF, slide).
+
+\subsection{Come funziona: Un Esempio Semplice}
+Per comprendere il funzionamento, consideriamo un esempio pratico. Immaginiamo che l'utente chieda: \textit{"Cos'è il pattern di Reflection?"}.
+
+\begin{enumerate}
+    \item \textbf{Retrieval (Recupero):} Il sistema converte la domanda in un vettore numerico (embedding) e cerca nel database (Qdrant) i frammenti di testo (chunks) dei PDF che sono semanticamente più vicini alla domanda.
+    \item \textbf{Augmentation (Arricchimento):} I frammenti trovati vengono inseriti nel prompt di sistema. Il prompt diventa simile a: 
+    \begin{quote}
+    \textit{"Usa SOLO le seguenti informazioni per rispondere: [Testo estratto dal PDF: 'La Reflection è un pattern...']. Domanda: Cos'è il pattern di Reflection?"}
+    \end{quote}
+    \item \textbf{Generation (Generazione):} L'LLM genera la risposta basandosi esclusivamente sul contesto fornito, garantendo che la spiegazione sia fedele al materiale didattico e non generica.
+\end{enumerate}
 
 \subsection{Chunking Ricorsivo}
 La qualità del retrieval dipende da come i documenti vengono suddivisi. Un chunking ingenuo (es. ogni 500 caratteri) può spezzare frasi a metà, perdendo il significato semantico.
@@ -157,15 +169,25 @@ Per gli embedding, il sistema è ibrido:
 
 La ricerca avviene tramite \textbf{Cosine Similarity}, con una soglia di rilevanza configurabile (default 0.25) per scartare risultati rumorosi.
 
-\section{Integrazione Web Search}
+\section{Integrazione Web Search con Tavily}
 In alcuni casi, i documenti forniti potrebbero non essere sufficienti o aggiornati. Synapse integra un modulo di ricerca web (\texttt{web\_search\_service.py}) che agisce come fallback o arricchimento.
+
+\subsection{Perché Tavily?}
+A differenza dei motori di ricerca tradizionali (come Google o Bing) che sono progettati per gli esseri umani e restituiscono una lista di link blu da esplorare, \textbf{Tavily} è un motore di ricerca costruito specificamente per gli agenti AI.
+
+Il funzionamento si distingue in questo modo:
+\begin{itemize}
+    \item \textbf{Ottimizzazione per LLM:} Non restituisce HTML grezzo o link, ma estrae direttamente il contenuto testuale rilevante, pulito da pubblicità, menu e boilerplate.
+    \item \textbf{Contesto Aggregato:} Tavily visita molteplici pagine in parallelo e aggrega le informazioni in un unico blocco di contesto coerente.
+    \item \textbf{Riduzione delle Allucinazioni:} Fornendo fatti verificati e citazioni dirette dalle fonti web, riduce il rischio che l'LLM inventi informazioni.
+\end{itemize}
 
 \subsection{Strategia a Due Livelli}
 Il servizio implementa una logica di fallback intelligente:
-1.  **Tavily API:** Se configurata, viene usata come prima scelta. Tavily è un motore di ricerca ottimizzato per agenti AI, che restituisce contesti puliti e rilevanti invece di semplici link.
-2.  **Wikipedia API:** Se Tavily non è disponibile, il sistema interroga le API pubbliche di Wikipedia (sia in italiano che in inglese) per ottenere riassunti introduttivi sull'argomento.
+1.  **Tavily API:** Se configurata, viene usata come prima scelta per ottenere informazioni approfondite e recenti.
+2.  **Wikipedia API:** Se Tavily non è disponibile (es. chiave API mancante), il sistema interroga le API pubbliche di Wikipedia per ottenere definizioni e riassunti introduttivi.
 
-I risultati della ricerca vengono puliti (rimozione di note, formattazione) e iniettati nel prompt dell'LLM come contesto supplementare, chiaramente demarcato.
+I risultati vengono iniettati nel prompt dell'LLM come contesto supplementare, permettendo al sistema di rispondere a domande su argomenti non coperti dai PDF caricati.
 
 \section{Esportazione e Interoperabilità}
 Per essere veramente utile, il materiale generato deve essere utilizzabile negli strumenti di studio quotidiani. Il servizio \texttt{export\_service.py} gestisce questa necessità.
@@ -196,16 +218,6 @@ Il sistema genera un file \texttt{.apkg} valido che include:
 
 Questo permette all'utente di importare centinaia di flashcard in Anki con un doppio click, mantenendo formattazione e tag.
 
-\section{Conclusioni e Sviluppi Futuri}
-Synapse dimostra come l'integrazione di tecniche Neurosymbolic e RAG possa elevare significativamente la qualità delle applicazioni basate su LLM. 
 
-\textbf{Punti di forza emersi:}
-\begin{itemize}
-    \item La \textbf{Reflection} riduce drasticamente le risposte banali, costringendo il modello a "ragionare" sulla qualità del proprio output.
-    \item Il \textbf{RAG Ricorsivo} garantisce che le risposte siano ancorate ai materiali del corso, fondamentale in ambito accademico.
-    \item L'architettura \textbf{Locale-First} (Ollama, Qdrant locale) rispetta la privacy e riduce i costi.
-\end{itemize}
-
-Futuri sviluppi potrebbero includere il supporto per input multimodali (immagini nei PDF) e l'integrazione di un grafo di conoscenza (Knowledge Graph) per migliorare ulteriormente il retrieval di concetti interconnessi.
 
 \end{document}
