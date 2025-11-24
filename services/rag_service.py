@@ -68,7 +68,7 @@ class OllamaEmbeddingFunction:
 
 
 class GeminiEmbeddingFunction:
-    def __init__(self, api_key: str, model: str = "text-embedding-004"):
+    def __init__(self, api_key: str, model: str = "gemini-embedding-001"):
         self.client = genai.Client(api_key=api_key)
         if not model.startswith("models/"):
             self.model_name = f"models/{model}"
@@ -249,7 +249,7 @@ class RAGService:
             self.gemini_api_key = os.getenv("GEMINI_API_KEY")
             if not self.gemini_api_key:
                 print("ATTENZIONE: GEMINI_API_KEY non trovata.")
-            self.gemini_embed_model = "text-embedding-004"
+            self.gemini_embed_model = "gemini-embedding-001"
         
         self.embedder = self._create_embedding_function()
         

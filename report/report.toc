@@ -1,0 +1,18 @@
+\babel@toc {nil}{}\relax 
+\contentsline {section}{\numberline {1}Introduzione}{2}{section.1}%
+\contentsline {section}{\numberline {2}Architettura del Sistema}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Panoramica dei Servizi}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Interfaccia Utente}{2}{subsection.2.2}%
+\contentsline {section}{\numberline {3}Neurosymbolic AI: Il Pattern di Reflection}{2}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Il Ciclo Draft-Critique-Refine}{3}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}1. Draft (Generazione della Bozza)}{3}{subsubsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.2}2. Critique (Analisi Critica)}{3}{subsubsection.3.1.2}%
+\contentsline {subsubsection}{\numberline {3.1.3}3. Refine (Raffinamento)}{3}{subsubsection.3.1.3}%
+\contentsline {section}{\numberline {4}Retrieval-Augmented Generation (RAG)}{4}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Chunking Ricorsivo}{4}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Vector Store e Embedding}{4}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Integrazione Web Search}{4}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Strategia a Due Livelli}{5}{subsection.5.1}%
+\contentsline {section}{\numberline {6}Esportazione e Interoperabilità}{5}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Generazione Pacchetti Anki (.apkg)}{5}{subsection.6.1}%
+\contentsline {section}{\numberline {7}Conclusioni e Sviluppi Futuri}{5}{section.7}%
