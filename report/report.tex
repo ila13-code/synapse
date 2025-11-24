@@ -1,9 +1,9 @@
 \documentclass[a4paper,12pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[italian]{babel}
+\usepackage[english]{babel} % Impostato su Inglese
 \usepackage{geometry}
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{graphicx}
@@ -39,8 +39,8 @@
 
 \lstset{style=mystyle}
 
-\title{\textbf{Report Tecnico: Synapse - Neurosymbolic AI e RAG per l'Apprendimento}}
-\author{Gruppo Synapse}
+\title{\textbf{Technical Report: Synapse - Neurosymbolic AI and RAG for Learning}}
+\author{Synapse Group}
 \date{\today}
 
 \begin{document}
@@ -48,169 +48,167 @@
 \maketitle
 
 \begin{abstract}
-Questo documento fornisce un'analisi tecnica approfondita di \textit{Synapse}, un sistema intelligente progettato per supportare lo studio universitario attraverso la generazione automatica di materiale didattico. Il report esplora l'architettura del sistema, focalizzandosi sull'integrazione di tecnologie \textbf{Retrieval-Augmented Generation (RAG)}, metodologie \textbf{Neurosymbolic} (Reflection Pattern), integrazione con servizi di ricerca web e funzionalità di esportazione avanzate.
+This document provides an in-depth technical analysis of \textit{Synapse}, an intelligent system designed to support university studies through the automatic generation of educational material. The report explores the system architecture, focusing on the integration of \textbf{Retrieval-Augmented Generation (RAG)} technologies, \textbf{Neurosymbolic} methodologies (Reflection Pattern), integration with web search services, and advanced export functionalities.
 \end{abstract}
 
 \tableofcontents
 \newpage
 
-\section{Introduzione}
-L'evoluzione dei Large Language Models (LLM) ha aperto nuove possibilità nel campo dell'educazione assistita. Tuttavia, l'uso "naive" di questi modelli presenta limitazioni significative: allucinazioni, superficialità nelle risposte e mancanza di aderenza ai materiali di studio specifici. 
+\section{Introduction}
+The evolution of Large Language Models (LLMs) has opened new possibilities in the field of assisted education. However, the "naive" use of these models presents significant limitations: hallucinations, superficiality in responses, and a lack of adherence to specific study materials.
 
-\textit{Synapse} nasce per risolvere questi problemi attraverso un'architettura ibrida che combina:
+\textit{Synapse} was created to solve these problems through a hybrid architecture that combines:
 \begin{itemize}
-    \item \textbf{Componente Neurale:} La capacità generativa e di comprensione del linguaggio naturale degli LLM (Gemini, Ollama).
-    \item \textbf{Componente Simbolica:} Regole logiche, vincoli strutturali e flussi di controllo deterministici che guidano l'AI.
-    \item \textbf{Knowledge Retrieval:} Un sistema RAG per ancorare le risposte a documenti verificati.
+    \item \textbf{Neural Component:} The generative capacity and natural language understanding of LLMs (Gemini, Ollama).
+    \item \textbf{Symbolic Component:} Logical rules, structural constraints, and deterministic control flows that guide the AI.
+    \item \textbf{Knowledge Retrieval:} A RAG system to anchor responses to verified documents.
 \end{itemize}
 
-\section{Architettura del Sistema}
-Il sistema è costruito in Python e segue un'architettura modulare a servizi.
+\section{System Architecture}
+The system is built in Python and follows a modular service-oriented architecture.
 
-\subsection{Panoramica dei Servizi}
-Il core logico risiede nella directory \texttt{services/}, che disaccoppia le responsabilità:
+\subsection{Service Overview}
+The logical core resides in the \texttt{services/} directory, which decouples responsibilities:
 \begin{itemize}
-    \item \texttt{ai\_service.py}: Astrazione per l'interazione con gli LLM (supporta Google Gemini e modelli locali via Ollama).
-    \item \texttt{rag\_service.py}: Gestisce l'indicizzazione dei documenti, il chunking e il retrieval vettoriale.
-    \item \texttt{reflection\_service.py}: Implementa la logica neurosymbolic per la generazione e validazione delle flashcard.
-    \item \texttt{web\_search\_service.py}: Fornisce contesto aggiuntivo dal web quando i documenti locali non sono sufficienti.
-    \item \texttt{export\_service.py}: Gestisce la conversione dei dati in formati interoperabili (CSV, Anki).
+    \item \texttt{ai\_service.py}: Abstraction for interaction with LLMs (supports Google Gemini and local models via Ollama).
+    \item \texttt{rag\_service.py}: Handles document indexing, chunking, and vector retrieval.
+    \item \texttt{reflection\_service.py}: Implements neurosymbolic logic for flashcard generation and validation.
+    \item \texttt{web\_search\_service.py}: Provides additional context from the web when local documents are insufficient.
+    \item \texttt{export\_service.py}: Manages data conversion into interoperable formats (CSV, Anki).
 \end{itemize}
 
-\subsection{Interfaccia Utente}
-L'interfaccia grafica è realizzata con \textbf{PyQt6}, offrendo un'esperienza desktop nativa e reattiva. La struttura UI (\texttt{ui/}) separa la logica di presentazione (`main\_window.py`, `subject\_window.py`) dai dialoghi di configurazione (`settings\_dialog.py`).
+\subsection{User Interface}
+The graphical interface is built with \textbf{PyQt6}, offering a native and responsive desktop experience. The UI structure (\texttt{ui/}) separates presentation logic (`main\_window.py`, `subject\_window.py`) from configuration dialogs (`settings\_dialog.py`).
 
-\section{Neurosymbolic AI: Il Pattern di Reflection}
-Una delle innovazioni principali di Synapse è l'implementazione del pattern di \textbf{Reflection}. Invece di accettare passivamente l'output dell'LLM, il sistema instaura un ciclo di auto-miglioramento.
+\section{Neurosymbolic AI: The Reflection Pattern}
+One of Synapse's main innovations is the implementation of the \textbf{Reflection} pattern. Instead of passively accepting the LLM's output, the system establishes a self-improvement cycle.
 
-\subsection{Il Ciclo Draft-Critique-Refine}
-Il processo di generazione di una flashcard segue tre fasi distinte, orchestrate da \texttt{reflection\_service.py}:
+\subsection{The Draft-Critique-Refine Cycle}
+The flashcard generation process follows three distinct phases, orchestrated by \texttt{reflection\_service.py}:
 
-\subsubsection{1. Draft (Generazione della Bozza)}
-L'LLM viene istruito per agire come un esperto di metacognizione. Il prompt impone regole "atomiche" basate sui principi di Andy Matuschak, richiedendo un output JSON strutturato.
+\subsubsection{1. Draft (Draft Generation)}
+The LLM is instructed to act as an expert in metacognition. The prompt imposes "atomic" rules based on Andy Matuschak's principles, requiring structured JSON output.
 
-\begin{lstlisting}[language=Python, caption=Prompt per la generazione della bozza]
-prompt = f"""Sei un esperto di apprendimento e metacognizione...
-Segui queste 5 REGOLE ASSOLUTE:
-1. Focalizzata: La domanda deve riguardare UN SOLO concetto.
-2. Precisa: Non deve essere ambigua.
-3. Coerente: La risposta deve essere l'unica corretta.
-4. Chiedi il "Perché": Preferisci domande sulle implicazioni.
-5. Sforzo Cognitivo: La risposta NON deve essere intuibile dalla domanda.
+\begin{lstlisting}[language=Python, caption=Prompt for draft generation]
+prompt = f"""You are an expert in learning and metacognition...
+Follow these 5 ABSOLUTE RULES:
+1. Focused: The question must address ONLY ONE concept.
+2. Precise: It must not be ambiguous.
+3. Consistent: The answer must be the only correct one.
+4. Ask "Why": Prefer questions about implications.
+5. Cognitive Effort: The answer must NOT be intuitive from the question.
 
-Restituisci la risposta in formato JSON..."""
+Return the response in JSON format..."""
 \end{lstlisting}
 
-\subsubsection{2. Critique (Analisi Critica)}
-In questa fase, il sistema assume un ruolo "avversario". Un secondo prompt chiede all'LLM di valutare la bozza appena generata. Non si tratta di una semplice revisione, ma di una validazione rispetto a criteri specifici.
+\subsubsection{2. Critique (Critical Analysis)}
+In this phase, the system assumes an "adversarial" role. A second prompt asks the LLM to evaluate the newly generated draft. This is not a simple review, but a validation against specific criteria.
 
-\begin{lstlisting}[language=Python, caption=Prompt per la critica]
-prompt = f"""Sei un critico esperto...
-Valuta la flashcard ESCLUSIVAMENTE secondo queste 5 REGOLE:
-1. Focalizzata: Chiede un solo concetto? O è troppo ampia?
-2. Precisa: È ambigua?
-3. Contesto: La risposta è corretta e basata SOLO sul contesto?
+\begin{lstlisting}[language=Python, caption=Prompt for critique]
+prompt = f"""You are an expert critic...
+Evaluate the flashcard EXCLUSIVELY according to these 5 RULES:
+1. Focused: Does it ask for a single concept? Or is it too broad?
+2. Precise: Is it ambiguous?
+3. Context: Is the answer correct and based ONLY on the context?
 ...
-Fornisci una critica COSTRUTTIVA in 2-3 frasi."""
+Provide CONSTRUCTIVE criticism in 2-3 sentences."""
 \end{lstlisting}
 
-\subsubsection{3. Refine (Raffinamento)}
-Se la critica evidenzia difetti (rilevati tramite keyword matching come "non focalizzata", "vaga", ecc.), il sistema invoca nuovamente l'LLM passando:
+\subsubsection{3. Refine (Refinement)}
+If the critique highlights defects (detected via keyword matching such as "not focused", "vague", etc.), the system invokes the LLM again, passing:
 \begin{enumerate}
-    \item La flashcard originale.
-    \item La critica ricevuta.
-    \item Il contesto originale.
+    \item The original flashcard.
+    \item The received critique.
+    \item The original context.
 \end{enumerate}
-Il modello è forzato a produrre una nuova versione che risolva specificamente i problemi segnalati.
+The model is forced to produce a new version that specifically resolves the reported issues.
 
 \section{Retrieval-Augmented Generation (RAG)}
-Il modulo RAG (\texttt{rag\_service.py}) è il cuore della "memoria" di Synapse. Questa tecnologia permette di superare il limite della conoscenza statica degli LLM, fornendo accesso dinamico ai documenti caricati dall'utente (PDF, slide).
+The RAG module (\texttt{rag\_service.py}) is the heart of Synapse's "memory". This technology overcomes the static knowledge limit of LLMs by providing dynamic access to user-uploaded documents (PDFs, slides).
 
-\subsection{Come funziona: Un Esempio Semplice}
-Per comprendere il funzionamento, consideriamo un esempio pratico. Immaginiamo che l'utente chieda: \textit{"Cos'è il pattern di Reflection?"}.
+\subsection{How it works: A Simple Example}
+To understand the operation, let's consider a practical example. Imagine the user asks: \textit{"What is the Reflection pattern?"}.
 
 \begin{enumerate}
-    \item \textbf{Retrieval (Recupero):} Il sistema converte la domanda in un vettore numerico (embedding) e cerca nel database (Qdrant) i frammenti di testo (chunks) dei PDF che sono semanticamente più vicini alla domanda.
-    \item \textbf{Augmentation (Arricchimento):} I frammenti trovati vengono inseriti nel prompt di sistema. Il prompt diventa simile a: 
+    \item \textbf{Retrieval:} The system converts the question into a numerical vector (embedding) and searches the database (Qdrant) for text fragments (chunks) from the PDFs that are semantically closest to the question.
+    \item \textbf{Augmentation:} The found fragments are inserted into the system prompt. The prompt becomes similar to:
     \begin{quote}
-    \textit{"Usa SOLO le seguenti informazioni per rispondere: [Testo estratto dal PDF: 'La Reflection è un pattern...']. Domanda: Cos'è il pattern di Reflection?"}
+    \textit{"Use ONLY the following information to answer: [Text extracted from PDF: 'Reflection is a pattern...']. Question: What is the Reflection pattern?"}
     \end{quote}
-    \item \textbf{Generation (Generazione):} L'LLM genera la risposta basandosi esclusivamente sul contesto fornito, garantendo che la spiegazione sia fedele al materiale didattico e non generica.
+    \item \textbf{Generation:} The LLM generates the answer based exclusively on the provided context, ensuring that the explanation is faithful to the study material and not generic.
 \end{enumerate}
 
-\subsection{Chunking Ricorsivo}
-La qualità del retrieval dipende drasticamente da come i documenti vengono suddivisi (chunking). Un approccio ingenuo, che taglia il testo ogni $N$ caratteri fissi, rischia di spezzare frasi a metà o separare concetti legati tra loro, rendendo il contesto incomprensibile per l'LLM.
+\subsection{Recursive Chunking}
+Retrieval quality depends drastically on how documents are divided (chunking). A naive approach, cutting text every fixed $N$ characters, risks splitting sentences in half or separating related concepts, making the context incomprehensible to the LLM.
 
-Synapse adotta una strategia di \textbf{Recursive Character Text Splitting}, che mira a preservare la semantica del testo rispettando la struttura naturale del linguaggio. L'algoritmo non taglia arbitrariamente, ma cerca di dividere il testo usando una gerarchia di separatori, in ordine di priorità:
+Synapse adopts a \textbf{Recursive Character Text Splitting} strategy, which aims to preserve text semantics by respecting the natural structure of language. The algorithm does not cut arbitrarily but tries to divide the text using a hierarchy of separators, in order of priority:
 
 \begin{enumerate}
-    \item \textbf{Paragrafi (\texttt{\textbackslash n\textbackslash n}):} Tenta prima di dividere il testo in blocchi logici completi (paragrafi).
-    \item \textbf{Linee (\texttt{\textbackslash n}):} Se un paragrafo è ancora troppo lungo per essere gestito, lo suddivide per righe.
-    \item \textbf{Frasi (\texttt{. }):} Se necessario, scende a livello di singola frase.
-    \item \textbf{Caratteri:} Solo come ultima risorsa taglia a metà una frase.
+    \item \textbf{Paragraphs (\texttt{\textbackslash n\textbackslash n}):} First attempts to divide text into complete logical blocks (paragraphs).
+    \item \textbf{Lines (\texttt{\textbackslash n}):} If a paragraph is still too long to handle, it splits by lines.
+    \item \textbf{Sentences (\texttt{. }):} If necessary, it goes down to the single sentence level.
+    \item \textbf{Characters:} Only as a last resort does it cut a sentence in half.
 \end{enumerate}
 
-Questo approccio garantisce che ogni "chunk" inviato al modello contenga, per quanto possibile, un pensiero completo e coerente, migliorando significativamente la qualità delle risposte generate.
+This approach ensures that each "chunk" sent to the model contains, as much as possible, a complete and coherent thought, significantly improving the quality of generated responses.
 
-\subsection{Vector Store e Embedding}
-Il sistema utilizza \textbf{Qdrant} in modalità embedded (salvataggio su disco locale) per memorizzare i vettori. Questo evita la necessità di server esterni complessi da configurare.
+\subsection{Vector Store and Embeddings}
+The system uses \textbf{Qdrant} in embedded mode (local disk storage) to store vectors. This avoids the need for complex external servers to configure.
 
-Per gli embedding, il sistema è ibrido:
+For embeddings, the system is hybrid:
 \begin{itemize}
-    \item \textbf{Locale (Ollama):} Utilizza modelli come \texttt{nomic-embed-text}, garantendo privacy totale e funzionamento offline.
-    \item \textbf{Cloud (Gemini):} Utilizza le API di Google per embedding ad alte prestazioni (\texttt{gemini-embedding-001}), ideale per chi non ha hardware potente.
+    \item \textbf{Local (Ollama):} Uses models like \texttt{nomic-embed-text}, ensuring total privacy and offline operation.
+    \item \textbf{Cloud (Gemini):} Uses Google APIs for high-performance embeddings (\texttt{gemini-embedding-001}), ideal for those without powerful hardware.
 \end{itemize}
 
-La ricerca avviene tramite \textbf{Cosine Similarity}, con una soglia di rilevanza configurabile (default 0.25) per scartare risultati rumorosi.
+The search is performed via \textbf{Cosine Similarity}, with a configurable relevance threshold (default 0.25) to discard noisy results.
 
-\section{Integrazione Ricerca Web}
-Per garantire che le risposte siano sempre aggiornate e complete, Synapse integra un modulo di ricerca web (\texttt{web\_search\_service.py}) che interviene quando i documenti locali non contengono le informazioni necessarie.
+\section{Web Search Integration}
+To ensure responses are always up-to-date and complete, Synapse integrates a web search module (\texttt{web\_search\_service.py}) that intervenes when local documents do not contain the necessary information.
 
-\subsection{Funzionamento del Servizio}
-Il sistema non si limita a effettuare una semplice ricerca su Google, ma utilizza uno strumento specializzato per agenti AI (in questo caso, \textbf{Tavily}) ottimizzato per l'estrazione di contenuti. 
-L'obiettivo non è fornire link all'utente, ma recuperare \textit{contesto grezzo} di alta qualità da iniettare nel prompt dell'LLM.
+\subsection{Service Operation}
+The system does not limit itself to a simple Google search but uses a specialized tool for AI agents (in this case, \textbf{Tavily}) optimized for content extraction.
+The goal is not to provide links to the user, but to retrieve high-quality \textit{raw context} to inject into the LLM prompt.
 
-Il processo avviene in tre step:
+The process takes place in three steps:
 \begin{itemize}
-    \item \textbf{Query Optimization:} L'LLM riformula la domanda dell'utente in una query di ricerca ottimizzata (es. da "chi è il presidente attuale?" a "current president of Italy 2024").
-    \item \textbf{Content Extraction:} Il motore di ricerca visita le pagine più rilevanti in parallelo, rimuovendo pubblicità, menu e boilerplate, ed estraendo solo il testo informativo.
-    \item \textbf{Context Aggregation:} I frammenti di testo estratti da diverse fonti vengono aggregati in un unico blocco di contesto che viene passato all'LLM per la generazione della risposta finale.
+    \item \textbf{Query Optimization:} The LLM reformulates the user's question into an optimized search query (e.g., from "who is the current president?" to "current president of Italy 2024").
+    \item \textbf{Content Extraction:} The search engine visits the most relevant pages in parallel, removing ads, menus, and boilerplate, and extracting only informative text.
+    \item \textbf{Context Aggregation:} Text fragments extracted from different sources are aggregated into a single context block passed to the LLM for final response generation.
 \end{itemize}
 
-\subsection{Strategia di Fallback}
-Il servizio è progettato per essere resiliente:
-1.  **Motore AI (Tavily):** Utilizzato come fonte primaria per la sua capacità di aggregare e pulire i dati da molteplici fonti web in tempo reale.
-2.  **Wikipedia API:** Se il servizio primario non è raggiungibile o configurato, il sistema effettua automaticamente un fallback sulle API pubbliche di Wikipedia per ottenere definizioni e concetti generali.
+\subsection{Fallback Strategy}
+The service is designed to be resilient:
+1.  **AI Engine (Tavily):** Used as the primary source for its ability to aggregate and clean data from multiple web sources in real-time.
+2.  **Wikipedia API:** If the primary service is unreachable or not configured, the system automatically falls back to public Wikipedia APIs to obtain general definitions and concepts.
 
-\section{Esportazione e Interoperabilità}
-Per essere veramente utile, il materiale generato deve essere utilizzabile negli strumenti di studio quotidiani. Il servizio \texttt{export\_service.py} gestisce questa necessità.
+\section{Export and Interoperability}
+To be truly useful, the generated material must be usable in daily study tools. The \texttt{export\_service.py} service handles this need.
 
-\subsection{Generazione Pacchetti Anki (.apkg)}
-La funzionalità più avanzata è la creazione diretta di pacchetti per \textbf{Anki}, il software di ripetizione spaziata più diffuso.
-Il codice interagisce direttamente con il database SQLite interno di Anki:
+\subsection{Anki Package Generation (.apkg)}
+The most advanced feature is the direct creation of packages for \textbf{Anki}, the most widespread spaced repetition software.
+The code interacts directly with Anki's internal SQLite database:
 
-\begin{lstlisting}[language=Python, caption=Creazione struttura database Anki]
+\begin{lstlisting}[language=Python, caption=Anki database structure creation]
 cursor.execute('''
     CREATE TABLE notes (
         id INTEGER PRIMARY KEY,
         guid TEXT NOT NULL,
         mid INTEGER NOT NULL,
         ...
-        flds TEXT NOT NULL,  -- Contiene Front e Back separati
+        flds TEXT NOT NULL,  -- Contains Front and Back separated
         ...
     )
 ''')
 \end{lstlisting}
 
-Il sistema genera un file \texttt{.apkg} valido che include:
+The system generates a valid \texttt{.apkg} file that includes:
 \begin{itemize}
-    \item La struttura del database (\texttt{collection.anki2}).
-    \item I modelli di carte (CSS personalizzato per una visualizzazione pulita).
-    \item I deck organizzati per materia.
+    \item The database structure (\texttt{collection.anki2}).
+    \item Card models (custom CSS for clean visualization).
+    \item Decks organized by subject.
 \end{itemize}
 
-Questo permette all'utente di importare centinaia di flashcard in Anki con un doppio click, mantenendo formattazione e tag.
-
-
+This allows the user to import hundreds of flashcards into Anki with a double click, maintaining formatting and tags.
 
 \end{document}
