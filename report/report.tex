@@ -1,0 +1,144 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+
+\geometry{margin=2.5cm}
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegray},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{\textbf{Report Tecnico: Synapse - Neurosymbolic AI e RAG per l'Apprendimento}}
+\author{Gruppo Synapse}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Questo documento illustra l'architettura tecnica di \textit{Synapse}, un sistema intelligente per la generazione di materiale didattico. Il progetto integra tecnologie di \textbf{Retrieval-Augmented Generation (RAG)} per la gestione della conoscenza e metodologie \textbf{Neurosymbolic} (in particolare il pattern di \textit{Reflection}) per garantire la qualità pedagogica degli output generati dai Large Language Models (LLM).
+\end{abstract}
+
+\section{Introduzione}
+L'obiettivo di Synapse è superare i limiti dei tradizionali generatori di quiz/flashcard basati su LLM, che spesso producono contenuti superficiali o affetti da allucinazioni. Abbiamo adottato un approccio ibrido che combina la capacità generativa delle reti neurali con regole logiche e strutturate (simboliche) per guidare il processo di creazione.
+
+\section{Neurosymbolic AI: Il Pattern di Reflection}
+Il cuore "intelligente" del sistema non è una singola chiamata all'LLM, ma un flusso di lavoro iterativo noto come \textbf{Reflection}. Questo pattern emula il processo di revisione umana: generazione, critica e raffinamento.
+
+\subsection{Perché la Reflection?}
+Gli LLM tendono a soddisfare la richiesta dell'utente nel modo più diretto possibile ("Lazy AI"), spesso ignorando sfumature pedagogiche complesse. Imporre tutte le regole in un unico prompt spesso fallisce. La Reflection scompone il problema:
+\begin{enumerate}
+    \item Un agente "Creatore" genera una bozza.
+    \item Un agente "Critico" analizza la bozza senza doverla generare.
+    \item Un agente "Revisore" applica le correzioni.
+\end{enumerate}
+
+\subsection{Implementazione e Prompting}
+Di seguito mostriamo come abbiamo ingegnerizzato i prompt per ciascuna fase (codice estratto da \texttt{reflection\_service.py}).
+
+\subsubsection{Fase 1: Draft (Generazione della Bozza)}
+Il sistema istruisce l'LLM ad agire come un esperto di metacognizione. Il prompt impone regole "atomiche" basate sui principi di Andy Matuschak.
+
+\begin{lstlisting}[language=Python, caption=Prompt per la generazione della bozza]
+prompt = f"""Sei un esperto di apprendimento...
+Segui queste 5 REGOLE ASSOLUTE:
+1. Focalizzata: La domanda deve riguardare UN SOLO concetto.
+2. Precisa: Non deve essere ambigua.
+3. Coerente: La risposta deve essere l'unica corretta.
+4. Chiedi il "Perché": Preferisci domande sulle implicazioni.
+5. Sforzo Cognitivo: La risposta NON deve essere intuibile dalla domanda.
+
+Restituisci la risposta in formato JSON..."""
+\end{lstlisting}
+
+\subsubsection{Fase 2: Critique (Analisi Critica)}
+Questa è la fase più "simbolica". Chiediamo all'LLM di valutare l'output precedente secondo criteri rigidi, quasi come se eseguisse un test unitario semantico.
+
+\begin{lstlisting}[language=Python, caption=Prompt per la critica]
+prompt = f"""Sei un critico esperto...
+Valuta la flashcard ESCLUSIVAMENTE secondo queste 5 REGOLE:
+1. Focalizzata: Chiede un solo concetto?
+2. Precisa: È ambigua?
+3. Contesto: La risposta è basata SOLO sul contesto?
+...
+Fornisci una critica COSTRUTTIVA. Se non rispetta le regole, spiega COSA migliorare."""
+\end{lstlisting}
+
+\subsubsection{Fase 3: Refine (Raffinamento)}
+Se la critica è negativa, il sistema passa la bozza originale e la critica al modello per generare una versione migliorata.
+
+\begin{lstlisting}[language=Python, caption=Prompt per il raffinamento]
+prompt = f"""
+FLASHCARD ORIGINALE: ...
+CRITICA RICEVUTA: {critique}
+Migliora la flashcard tenendo conto della critica.
+Assicurati che la flashcard migliorata affronti i problemi evidenziati."""
+\end{lstlisting}
+
+Questo ciclo si ripete fino a quando la critica è positiva o si raggiunge un numero massimo di iterazioni (es. 2), garantendo un controllo di qualità automatico.
+
+\section{Retrieval-Augmented Generation (RAG)}
+Per vincolare le risposte ai soli materiali di studio forniti (PDF), abbiamo implementato una pipeline RAG avanzata.
+
+\subsection{Chunking Ricorsivo}
+Uno degli aspetti più critici del RAG è come si divide il testo. Un taglio netto a $N$ caratteri può spezzare frasi o concetti a metà. Abbiamo implementato un algoritmo di \textbf{Recursive Character Text Splitting} in \texttt{rag\_service.py}.
+
+L'algoritmo prova a dividere il testo usando una gerarchia di separatori:
+\begin{enumerate}
+    \item \texttt{\textbackslash n\textbackslash n} (Paragrafi): Cerca di mantenere intatti i paragrafi.
+    \item \texttt{\textbackslash n} (Linee): Se un paragrafo è troppo lungo, divide alle nuove righe.
+    \item \texttt{. } (Frasi): Se ancora troppo lungo, divide ai punti.
+    \item \texttt{" "} (Parole): Ultima risorsa, divide agli spazi.
+\end{enumerate}
+
+Questo approccio preserva la semantica del testo molto meglio del chunking a dimensione fissa.
+
+\subsection{Architettura del Sistema RAG}
+\begin{itemize}
+    \item \textbf{Vector Store:} Utilizziamo \textbf{Qdrant} locale per memorizzare i vettori. Ogni chunk è associato a metadati (ID documento, nome file) per la tracciabilità.
+    \item \textbf{Embedding:} Il sistema è agnostico. Supporta:
+    \begin{itemize}
+        \item \textbf{Locale:} Ollama con modello \textit{nomic-embed-text} (privacy totale).
+        \item \textbf{Cloud:} Google Gemini Embedding (prestazioni elevate).
+    \end{itemize}
+    \item \textbf{Retrieval:} Usiamo la \textit{Cosine Similarity} con una soglia di score (configurabile via \texttt{.env}, es. 0.25) per filtrare risultati poco pertinenti.
+\end{itemize}
+
+\section{Conclusioni}
+L'integrazione di queste tecnologie ha prodotto risultati tangibili:
+\begin{itemize}
+    \item \textbf{Qualità:} Le flashcard generate tramite Reflection sono risultate più profonde e meno banali rispetto alla generazione diretta (Zero-Shot).
+    \item \textbf{Affidabilità:} Il RAG con chunking ricorsivo ha eliminato le allucinazioni, costringendo il modello a citare solo fatti presenti nei PDF.
+    \item \textbf{Flessibilità:} L'architettura modulare permette di scambiare i modelli (Ollama/Gemini) senza riscrivere la logica applicativa.
+\end{itemize}
+
+\end{document}
