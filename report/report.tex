@@ -139,24 +139,18 @@ Per comprendere il funzionamento, consideriamo un esempio pratico. Immaginiamo c
 \end{enumerate}
 
 \subsection{Chunking Ricorsivo}
-La qualità del retrieval dipende da come i documenti vengono suddivisi. Un chunking ingenuo (es. ogni 500 caratteri) può spezzare frasi a metà, perdendo il significato semantico.
-Synapse implementa un \textbf{Recursive Character Text Splitting}:
+La qualità del retrieval dipende drasticamente da come i documenti vengono suddivisi (chunking). Un approccio ingenuo, che taglia il testo ogni $N$ caratteri fissi, rischia di spezzare frasi a metà o separare concetti legati tra loro, rendendo il contesto incomprensibile per l'LLM.
 
-\begin{lstlisting}[language=Python, caption=Logica di Chunking Ricorsivo]
-separators = ["\n\n", "\n", ". ", " ", ""]
+Synapse adotta una strategia di \textbf{Recursive Character Text Splitting}, che mira a preservare la semantica del testo rispettando la struttura naturale del linguaggio. L'algoritmo non taglia arbitrariamente, ma cerca di dividere il testo usando una gerarchia di separatori, in ordine di priorità:
 
-def _recursive_split(text, separators):
-    # Prova a dividere con il separatore più "grande" (es. paragrafi)
-    # Se i pezzi sono ancora troppo grandi, scendi nella gerarchia (es. frasi)
-    # ...
-\end{lstlisting}
-
-Questo algoritmo tenta di preservare l'integrità semantica:
 \begin{enumerate}
-    \item Prima prova a dividere per doppi a capo (paragrafi).
-    \item Se un paragrafo supera la dimensione massima, prova a dividere per singoli a capo.
-    \item Se necessario, scende a livello di frase (punto).
+    \item \textbf{Paragrafi (\texttt{\textbackslash n\textbackslash n}):} Tenta prima di dividere il testo in blocchi logici completi (paragrafi).
+    \item \textbf{Linee (\texttt{\textbackslash n}):} Se un paragrafo è ancora troppo lungo per essere gestito, lo suddivide per righe.
+    \item \textbf{Frasi (\texttt{. }):} Se necessario, scende a livello di singola frase.
+    \item \textbf{Caratteri:} Solo come ultima risorsa taglia a metà una frase.
 \end{enumerate}
+
+Questo approccio garantisce che ogni "chunk" inviato al modello contenga, per quanto possibile, un pensiero completo e coerente, migliorando significativamente la qualità delle risposte generate.
 
 \subsection{Vector Store e Embedding}
 Il sistema utilizza \textbf{Qdrant} in modalità embedded (salvataggio su disco locale) per memorizzare i vettori. Questo evita la necessità di server esterni complessi da configurare.
@@ -169,25 +163,24 @@ Per gli embedding, il sistema è ibrido:
 
 La ricerca avviene tramite \textbf{Cosine Similarity}, con una soglia di rilevanza configurabile (default 0.25) per scartare risultati rumorosi.
 
-\section{Integrazione Web Search con Tavily}
-In alcuni casi, i documenti forniti potrebbero non essere sufficienti o aggiornati. Synapse integra un modulo di ricerca web (\texttt{web\_search\_service.py}) che agisce come fallback o arricchimento.
+\section{Integrazione Ricerca Web}
+Per garantire che le risposte siano sempre aggiornate e complete, Synapse integra un modulo di ricerca web (\texttt{web\_search\_service.py}) che interviene quando i documenti locali non contengono le informazioni necessarie.
 
-\subsection{Perché Tavily?}
-A differenza dei motori di ricerca tradizionali (come Google o Bing) che sono progettati per gli esseri umani e restituiscono una lista di link blu da esplorare, \textbf{Tavily} è un motore di ricerca costruito specificamente per gli agenti AI.
+\subsection{Funzionamento del Servizio}
+Il sistema non si limita a effettuare una semplice ricerca su Google, ma utilizza uno strumento specializzato per agenti AI (in questo caso, \textbf{Tavily}) ottimizzato per l'estrazione di contenuti. 
+L'obiettivo non è fornire link all'utente, ma recuperare \textit{contesto grezzo} di alta qualità da iniettare nel prompt dell'LLM.
 
-Il funzionamento si distingue in questo modo:
+Il processo avviene in tre step:
 \begin{itemize}
-    \item \textbf{Ottimizzazione per LLM:} Non restituisce HTML grezzo o link, ma estrae direttamente il contenuto testuale rilevante, pulito da pubblicità, menu e boilerplate.
-    \item \textbf{Contesto Aggregato:} Tavily visita molteplici pagine in parallelo e aggrega le informazioni in un unico blocco di contesto coerente.
-    \item \textbf{Riduzione delle Allucinazioni:} Fornendo fatti verificati e citazioni dirette dalle fonti web, riduce il rischio che l'LLM inventi informazioni.
+    \item \textbf{Query Optimization:} L'LLM riformula la domanda dell'utente in una query di ricerca ottimizzata (es. da "chi è il presidente attuale?" a "current president of Italy 2024").
+    \item \textbf{Content Extraction:} Il motore di ricerca visita le pagine più rilevanti in parallelo, rimuovendo pubblicità, menu e boilerplate, ed estraendo solo il testo informativo.
+    \item \textbf{Context Aggregation:} I frammenti di testo estratti da diverse fonti vengono aggregati in un unico blocco di contesto che viene passato all'LLM per la generazione della risposta finale.
 \end{itemize}
 
-\subsection{Strategia a Due Livelli}
-Il servizio implementa una logica di fallback intelligente:
-1.  **Tavily API:** Se configurata, viene usata come prima scelta per ottenere informazioni approfondite e recenti.
-2.  **Wikipedia API:** Se Tavily non è disponibile (es. chiave API mancante), il sistema interroga le API pubbliche di Wikipedia per ottenere definizioni e riassunti introduttivi.
-
-I risultati vengono iniettati nel prompt dell'LLM come contesto supplementare, permettendo al sistema di rispondere a domande su argomenti non coperti dai PDF caricati.
+\subsection{Strategia di Fallback}
+Il servizio è progettato per essere resiliente:
+1.  **Motore AI (Tavily):** Utilizzato come fonte primaria per la sua capacità di aggregare e pulire i dati da molteplici fonti web in tempo reale.
+2.  **Wikipedia API:** Se il servizio primario non è raggiungibile o configurato, il sistema effettua automaticamente un fallback sulle API pubbliche di Wikipedia per ottenere definizioni e concetti generali.
 
 \section{Esportazione e Interoperabilità}
 Per essere veramente utile, il materiale generato deve essere utilizzabile negli strumenti di studio quotidiani. Il servizio \texttt{export\_service.py} gestisce questa necessità.
