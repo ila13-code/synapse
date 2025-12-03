@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (QCheckBox, QFileDialog, QFrame,
 from config.env_loader import get_env_bool
 from database.db_manager import DatabaseManager
 from services.ai_local_service import LocalLLMService
-from services.ai_ollama_service import OllamaAIService
 from services.ai_service import AIService
 from services.export_service import ExportService
 from services.file_service import FileService

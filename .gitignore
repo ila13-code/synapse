@@ -23,7 +23,7 @@ wheels/
 .venv/
 ENV/
 env/
-
+.env
 # Database
 *.db
 synapse.db
