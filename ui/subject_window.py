@@ -14,11 +14,12 @@ from config.env_loader import get_env_bool
 from database.db_manager import DatabaseManager
 from services.ai_local_service import LocalLLMService
 from services.ai_service import AIService
-from services.export_service import ExportService
-from services.file_service import FileService
+from services.files.export_service import ExportService
+from services.files.file_service import FileService
+from services.tools.latex_service import LaTeXService
 from services.rag_service import RAGService
 from services.reflection_service import ReflectionService
-from services.web_search_service import WebSearchService
+from services.tools.web_search_service import WebSearchService
 from ui.dialogs import EditFlashcardDialog, ToggleSwitch
 from ui.icons import IconProvider
 from ui.styles import (get_caption_text_color, get_card_background,
@@ -1351,7 +1352,11 @@ class SubjectWindow(QMainWindow):
         card = self.flashcards[self.current_flashcard_index]
         
         if self.is_flipped:
-            self.flashcard_label.setText(card['back'])
+            # Processa LaTeX e usa setHtml per il rendering
+            back_text = LaTeXService.process_text(card['back'])
+            self.flashcard_label.setHtml(back_text)
+            self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter) # Ripristina allineamento
+            
             self.hint_label.setText("Risposta")
             
             # Mostra difficoltà
@@ -1391,7 +1396,11 @@ class SubjectWindow(QMainWindow):
             """)
             self.difficulty_label.show()
         else:
-            self.flashcard_label.setText(card['front'])
+            # Processa LaTeX e usa setHtml per il rendering
+            front_text = LaTeXService.process_text(card['front'])
+            self.flashcard_label.setHtml(front_text)
+            self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter) # Ripristina allineamento
+            
             self.hint_label.setText("Clicca per vedere la risposta")
             self.difficulty_label.hide()
     
