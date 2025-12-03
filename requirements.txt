@@ -7,4 +7,4 @@ requests==2.32.5     # Chiamate HTTP (embeddings Ollama, ecc.)
 qdrant-client==1.7.3 # bumped: 1.7.0 not available on PyPI; use available 1.7.3
 QtAwesome==1.4.0     # Icone Font Awesome (opzionale UI)
 tavily-python>=0.3.0,<1.0.0  
-
+pylatexenc==2.10   # Parsing LaTeX (per Tavily)
