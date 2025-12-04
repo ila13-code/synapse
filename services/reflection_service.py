@@ -153,6 +153,8 @@ class ReflectionService:
     def generate_flashcard_draft(self, context: str, topic: str) -> Dict[str, str]:
         prompt = f"""You are an expert in learning and metacognition. Your goal is to create ONE "atomic" flashcard based on Andy Matuschak's principles.
 
+                    CRITICAL: Generate the flashcard in ENGLISH ONLY, regardless of the language of the context or topic.
+
                     REQUIRED TOPIC (MANDATORY): {topic}
 
                     ATTENTION: The flashcard MUST be EXCLUSIVELY about "{topic}".
@@ -246,6 +248,8 @@ class ReflectionService:
         topic_instruction = f"\n- Mantieni il focus ESCLUSIVAMENTE su: {topic}" if topic else ""
 
         prompt = f"""You are an expert in learning and creating educational materials.
+
+                    CRITICAL: Generate the improved flashcard in ENGLISH ONLY.
 
                     ORIGINAL FLASHCARD:
                     Question: {flashcard.get('front','')}

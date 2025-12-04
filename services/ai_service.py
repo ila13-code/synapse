@@ -40,6 +40,9 @@ class AIService:
         
         prompt = f"""You are an expert assistant in creating flashcards for university students. Your goal is to apply Andy Matuschak's principles to create "atomic" flashcards that foster understanding.
 
+                    CRITICAL: You MUST generate ALL flashcards in ENGLISH ONLY, regardless of the language of the source content.
+                    Even if the content is in Italian, Spanish, French, or any other language, your flashcards MUST be in English.
+
                     {web_search_instruction}
 
                     Content:
