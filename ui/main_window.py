@@ -121,7 +121,7 @@ class SubjectCard(QFrame):
             layout.addSpacing(18)
         
         # Data creazione - Usa get_caption_text_color()
-        date_label = QLabel(f"Creata il {self.subject_data['created_at'][:10]}")
+        date_label = QLabel(f"Created on {self.subject_data['created_at'][:10]}")
         date_label.setStyleSheet(f"""
             font-size: 11px; 
             color: {get_caption_text_color()};
@@ -151,9 +151,9 @@ class SubjectCard(QFrame):
         # ... (il codice di delete_subject rimane invariato)
         reply = QMessageBox.question(
             self,
-            'Conferma Eliminazione',
-            f'Sei sicuro di voler eliminare la materia "{self.subject_data["name"]}"?\n\n'
-            f'Verranno eliminati anche tutti i documenti e le flashcard associati.',
+            'Confirm Deletion',
+            f'Are you sure you want to delete the subject "{self.subject_data["name"]}"?\n\n'
+            f'All associated documents and flashcards will also be deleted.',
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No
         )
@@ -169,14 +169,14 @@ class SubjectCard(QFrame):
                 
                 QMessageBox.information(
                     self,
-                    'Materia Eliminata',
-                    f'La materia "{self.subject_data["name"]}" è stata eliminata con successo.'
+                    'Subject Deleted',
+                    f'The subject "{self.subject_data["name"]}" has been deleted successfully.'
                 )
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    'Errore',
-                    f'Errore durante l\'eliminazione della materia:\n{str(e)}'
+                    'Error',
+                    f'Error deleting subject:\n{str(e)}'
                 )
 
 
@@ -266,7 +266,7 @@ class MainWindow(QMainWindow):
         self.back_btn.setProperty("class", "secondary")
         self.back_btn.setFixedSize(44, 44)
         self.back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.back_btn.setToolTip("Torna alle materie")
+        self.back_btn.setToolTip("Back to subjects")
         self.back_btn.clicked.connect(self.show_subjects_view)
         self.back_btn.hide()  # Nascosto di default
         layout.addWidget(self.back_btn)
@@ -294,7 +294,7 @@ class MainWindow(QMainWindow):
         layout.addStretch()
         
         # Bottone impostazioni con icona - Usa colori tema
-        settings_btn = QPushButton(" Impostazioni")
+        settings_btn = QPushButton(" Settings")
         settings_btn.setIcon(IconProvider.get_icon('settings', 18, get_icon_color()))
         settings_btn.setProperty("class", "secondary")
         settings_btn.clicked.connect(self.show_settings)
@@ -313,11 +313,11 @@ class MainWindow(QMainWindow):
         header_layout.setSpacing(8)
         
         # I QLabel.title e QLabel.body sono gestiti in styles.py
-        title = QLabel("Le tue Materie")
+        title = QLabel("Your Subjects")
         title.setProperty("class", "title")
         header_layout.addWidget(title)
         
-        subtitle = QLabel("Organizza il tuo studio creando materie e generando flashcard con l'AI")
+        subtitle = QLabel("Organize your study by creating subjects and generating flashcards with AI")
         subtitle.setProperty("class", "body")
         header_layout.addWidget(subtitle)
         
@@ -382,7 +382,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(icon_label)
         
         # Testo principale - Usa get_text_color()
-        text_label = QLabel("Nuova Materia")
+        text_label = QLabel("New Subject")
         text_label.setStyleSheet(f"""
             font-size: 16px; 
             font-weight: 600; 
@@ -394,7 +394,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(text_label)
         
         # Descrizione - Usa get_caption_text_color()
-        desc_label = QLabel("Crea una nuova cartella di studio")
+        desc_label = QLabel("Create a new study folder")
         desc_label.setStyleSheet(f"""
             font-size: 13px; 
             color: {get_caption_text_color()};

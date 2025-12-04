@@ -26,8 +26,8 @@ class Flashcard:
 
 class ReflectionService:
     _POSITIVE_MARKERS = (
-        "eccellente", "ottima", "perfetta", "già buona",
-        "va già bene", "rispetta tutti i principi"
+        "excellent", "great", "perfect", "already good",
+        "good enough", "respects all principles"
     )
 
     def __init__(self, ai_service, *, max_api_retries: int = 2):
@@ -42,10 +42,10 @@ class ReflectionService:
                 response = self.ai_service._call_api(prompt)
                 if response and isinstance(response, str) and response.strip():
                     return response
-                logger.warning("Tentativo %d: risposta vuota dall'AI.", attempt)
+                logger.warning("Attempt %d: empty response from AI.", attempt)
             except Exception as e:
                 last_err = e
-                logger.warning("Tentativo %d: errore AI: %s", attempt, e)
+                logger.warning("Attempt %d: AI error: %s", attempt, e)
         if last_err:
             raise last_err
         return ""
@@ -140,98 +140,98 @@ class ReflectionService:
         back = str(payload.get("back", "")).strip()
         fc = Flashcard(front=front, back=back)
         if not fc.is_valid():
-            raise ValueError("Payload JSON non contiene campi 'front'/'back' validi.")
+            raise ValueError("Payload JSON does not contain valid 'front'/'back' fields.")
         return fc
 
     @staticmethod
     def _fallback_flashcard(topic: str, message: str) -> Dict[str, str]:
         return {
-            "front": f"Cos'è {topic}?",
+            "front": f"What is {topic}?",
             "back": message,
         }
 
     def generate_flashcard_draft(self, context: str, topic: str) -> Dict[str, str]:
-        prompt = f"""Sei un esperto di apprendimento e metacognizione. Il tuo obiettivo è creare UNA SOLA flashcard "atomica" basata sui principi di Andy Matuschak.
+        prompt = f"""You are an expert in learning and metacognition. Your goal is to create ONE "atomic" flashcard based on Andy Matuschak's principles.
 
-                    ARGOMENTO RICHIESTO (OBBLIGATORIO): {topic}
+                    REQUIRED TOPIC (MANDATORY): {topic}
 
-                    ATTENZIONE: La flashcard DEVE riguardare ESCLUSIVAMENTE "{topic}".
-                    - Se il contesto non contiene informazioni rilevanti per "{topic}", indica che non ci sono informazioni sufficienti.
-                    - NON creare flashcard su argomenti diversi da "{topic}".
+                    ATTENTION: The flashcard MUST be EXCLUSIVELY about "{topic}".
+                    - If the context does not contain relevant information for "{topic}", indicate that there is insufficient information.
+                    - DO NOT create flashcards on topics other than "{topic}".
 
-                    Usa SOLO le informazioni dal seguente contesto che sono PERTINENTI a "{topic}":
+                    Use ONLY the information from the following context that is RELEVANT to "{topic}":
                     {context}
 
-                    Segui queste 5 REGOLE ASSOLUTE:
-                    1.  **Focalizzata**: La domanda (front) deve riguardare UN SOLO concetto o fatto RELATIVO A "{topic}".
-                    2.  **Precisa**: La domanda non deve essere ambigua. Deve far capire esattamente cosa è richiesto su "{topic}".
-                    3.  **Coerente**: La risposta (back) deve essere l'unica risposta corretta e sempre la stessa.
-                    4.  **Chiedi il "Perché"**: Se possibile, preferisci domande sul "perché" o sulle implicazioni, piuttosto che definizioni secche.
-                    5.  **Sforzo Cognitivo**: La risposta NON deve essere intuibile dalla domanda (evita indizi banali o domande binarie Sì/No).
+                    Follow these 5 ABSOLUTE RULES:
+                    1.  **Focused**: The question (front) must concern ONLY ONE concept or fact RELATED TO "{topic}".
+                    2.  **Precise**: The question must not be ambiguous. It must be clear exactly what is required about "{topic}".
+                    3.  **Consistent**: The answer (back) must be the only correct answer and always the same.
+                    4.  **Ask "Why"**: If possible, prefer questions about "why" or implications, rather than dry definitions.
+                    5.  **Cognitive Effort**: The answer MUST NOT be guessable from the question (avoid trivial clues or binary Yes/No questions).
 
-                    Restituisci la risposta in formato JSON con questa struttura esatta:
+                    Return the answer in JSON format with this exact structure:
                     {{
-                        "front": "Domanda atomica, precisa e che richiede sforzo SU {topic}",
-                        "back": "Risposta concisa e accurata basata sul contesto"
+                        "front": "Atomic, precise question requiring effort ABOUT {topic}",
+                        "back": "Concise and accurate answer based on context"
                     }}
 
-                    Non inventare informazioni non presenti nel contesto. Se il contesto non parla di "{topic}", restituisci:
+                    Do not invent information not present in the context. If the context does not speak of "{topic}", return:
                     {{
-                        "front": "Informazione non disponibile",
-                        "back": "Il contesto fornito non contiene informazioni rilevanti su {topic}"
+                        "front": "Information not available",
+                        "back": "The provided context does not contain relevant information about {topic}"
                     }}"""
 
         try:
             response = self._call_ai(prompt)
 
             if not response or not response.strip():
-                logger.warning("Risposta vuota dal servizio AI (draft).")
-                return self._fallback_flashcard(topic, "Errore: risposta vuota dal servizio AI")
+                logger.warning("Empty response from AI service (draft).")
+                return self._fallback_flashcard(topic, "Error: empty response from AI service")
 
             payload = self._extract_json_object(response)
             if payload is None:
-                logger.warning("Parsing JSON fallito (draft).")
-                return self._fallback_flashcard(topic, "Errore nel parsing della risposta")
+                logger.warning("JSON parsing failed (draft).")
+                return self._fallback_flashcard(topic, "Error parsing response")
 
             fc = self._validate_flashcard_payload(payload)
 
             return fc.to_dict()
 
         except Exception as e:
-            logger.error("Errore generazione bozza: %s", e)
-            return self._fallback_flashcard(topic, "Errore nella generazione")
+            logger.error("Draft generation error: %s", e)
+            return self._fallback_flashcard(topic, "Generation error")
 
     def critique_flashcard(self, flashcard: Dict[str, str], context: str) -> str:
         front = flashcard.get("front", "").strip()
         back = flashcard.get("back", "").strip()
 
-        prompt = f"""Sei un critico esperto di materiali didattici che segue i principi di Andy Matuschak.
+        prompt = f"""You are an expert critic of educational materials who follows Andy Matuschak's principles.
 
-                    Analizza questa flashcard basandoti sul contesto fornito.
+                    Analyze this flashcard based on the provided context.
 
                     FLASHCARD:
-                    Domanda: {front}
-                    Risposta: {back}
+                    Question: {front}
+                    Answer: {back}
 
-                    CONTESTO DISPONIBILE:
+                    AVAILABLE CONTEXT:
                     {context}
 
-                    Valuta la flashcard ESCLUSIVAMENTE secondo queste 5 REGOLE:
-                    1.  **Focalizzata**: Chiede un solo concetto? O è troppo ampia (es. chiede una lista)?
-                    2.  **Precisa**: È ambigua? Si capisce esattamente cosa vuole?
-                    3.  **Contesto**: La risposta è corretta e basata SOLO sul contesto?
-                    4.  **Sforzo Cognitivo**: La risposta è troppo ovvia leggendo la domanda?
-                    5.  **Concettuale**: È una definizione secca (negativo) o chiede il "perché", una differenza, o un'implicazione (positivo)?
+                    Evaluate the flashcard EXCLUSIVELY according to these 5 RULES:
+                    1.  **Focused**: Does it ask for only one concept? Or is it too broad (e.g. asks for a list)?
+                    2.  **Precise**: Is it ambiguous? Is it clear exactly what is wanted?
+                    3.  **Context**: Is the answer correct and based ONLY on the context?
+                    4.  **Cognitive Effort**: Is the answer too obvious reading the question?
+                    5.  **Conceptual**: Is it a dry definition (negative) or does it ask "why", a difference, or an implication (positive)?
 
-                    Fornisci una critica COSTRUTTIVA in 2-3 frasi.
-                    - Se la flashcard è già eccellente e rispetta le regole, dillo (es. "Eccellente, rispetta tutti i principi.").
-                    - Se non rispetta le regole, spiega COSA migliorare (es. "Non è focalizzata, chiede due cose. Scomponila." OPPURE "Domanda troppo vaga, rendila precisa." OPPURE "La risposta è intuibile, riformula la domanda per richiedere più sforzo.")."""
+                    Provide a CONSTRUCTIVE critique in 2-3 sentences.
+                    - If the flashcard is already excellent and respects the rules, say so (e.g. "Excellent, respects all principles.").
+                    - If it does not respect the rules, explain WHAT to improve (e.g. "It is not focused, it asks two things. Break it down." OR "Question too vague, make it precise." OR "The answer is guessable, rephrase the question to require more effort.")."""
 
         try:
             critique = self._call_ai(prompt)
-            return (critique or "").strip() or "Critica non disponibile."
+            return (critique or "").strip() or "Critique not available."
         except Exception:
-            return "Impossibile generare critica"
+            return "Unable to generate critique"
 
     def refine_flashcard(
         self,
@@ -245,47 +245,47 @@ class ReflectionService:
         """
         topic_instruction = f"\n- Mantieni il focus ESCLUSIVAMENTE su: {topic}" if topic else ""
 
-        prompt = f"""Sei un esperto nell'apprendimento e nella creazione di materiali   didattici.
+        prompt = f"""You are an expert in learning and creating educational materials.
 
-                    FLASHCARD ORIGINALE:
-                    Domanda: {flashcard.get('front','')}
-                    Risposta: {flashcard.get('back','')}
+                    ORIGINAL FLASHCARD:
+                    Question: {flashcard.get('front','')}
+                    Answer: {flashcard.get('back','')}
 
-                    CRITICA RICEVUTA:
+                    CRITIQUE RECEIVED:
                     {critique}
 
-                    CONTESTO DISPONIBILE:
+                    AVAILABLE CONTEXT:
                     {context}
 
-                    Migliora la flashcard tenendo conto della critica. 
-                    Restituisci la flashcard migliorata in formato JSON:
+                    Improve the flashcard taking into account the critique.
+                    Return the improved flashcard in JSON format:
                     {{
-                        "front": "Domanda migliorata",
-                        "back": "Risposta migliorata"
+                        "front": "Improved question",
+                        "back": "Improved answer"
                     }}
 
-                    Assicurati che la flashcard migliorata:
-                    - Affronti i problemi evidenziati nella critica
-                    - Rimanga fedele al contesto fornito
-                    - Sia chiara e utile per l'apprendimento{topic_instruction}"""
+                    Ensure the improved flashcard:
+                    - Addresses the issues highlighted in the critique
+                    - Remains faithful to the provided context
+                    - Is clear and useful for learning{topic_instruction}"""
 
         try:
             response = self._call_ai(prompt)
 
             if not response or not response.strip():
-                logger.warning("Risposta vuota dal servizio AI per raffinamento.")
-                return flashcard  # Ritorna l'originale
+                logger.warning("Empty response from AI service for refinement.")
+                return flashcard  # Return original
 
             payload = self._extract_json_object(response)
             if payload is None:
-                logger.warning("Parsing JSON fallito (refine).")
+                logger.warning("JSON parsing failed (refine).")
                 return flashcard
 
             refined = self._validate_flashcard_payload(payload)
             return refined.to_dict()
 
         except Exception as e:
-            logger.warning("Errore raffinamento: %s", e)
+            logger.warning("Refinement error: %s", e)
             return flashcard 
 
     def generate_flashcard_with_reflection(
@@ -312,49 +312,50 @@ class ReflectionService:
         is_query = len(chunks) == 1 and len(sample_content) < 200
         
         if is_query:
-            prompt = f"""La seguente è una domanda/query di uno studente:
+
+            prompt = f"""The following is a student's question/query:
 
                         QUERY: {sample_content}
 
-                        Estrai {num_topics} sotto-argomenti o concetti chiave DALLA QUERY STESSA che possono essere approfonditi per rispondere completamente alla domanda.
+                        Extract {num_topics} sub-topics or key concepts FROM THE QUERY ITSELF that can be explored to fully answer the question.
 
-                        Restituisci SOLO una lista JSON di {num_topics} argomenti, senza spiegazioni:
-                        ["Argomento 1", "Argomento 2", ...]
+                        Return ONLY a JSON list of {num_topics} topics, without explanations:
+                        ["Topic 1", "Topic 2", ...]
 
-                        Ogni argomento deve essere:
-                        - Specifico e pertinente alla query
-                        - Espresso in 2-5 parole
-                        - Utile per comprendere la risposta alla domanda
+                        Each topic must be:
+                        - Specific and relevant to the query
+                        - Expressed in 2-5 words
+                        - Useful for understanding the answer to the question
 
-                        IMPORTANTE: Se la query è molto specifica e non può essere scomposta, ripeti la query principale con leggere variazioni.
+                        IMPORTANT: If the query is very specific and cannot be decomposed, repeat the main query with slight variations.
 
-                        Esempio:
-                        Query: "Come funzionano i database SQL?"
-                        → ["Database relazionali", "Linguaggio SQL", "Tabelle e relazioni", "Query SELECT", "Transazioni ACID", ...]
+                        Example:
+                        Query: "How do SQL databases work?"
+                        → ["Relational databases", "SQL language", "Tables and relationships", "SELECT queries", "ACID transactions", ...]
                         """
         else:
-            prompt = f"""Analizza il seguente testo e identifica i {num_topics} argomenti principali.
+            prompt = f"""Analyze the following text and identify the {num_topics} main topics.
 
-                        TESTO:
+                        TEXT:
                         {sample_content}
 
-                        Restituisci SOLO una lista JSON di {num_topics} argomenti chiave, senza spiegazioni:
-                        ["Argomento 1", "Argomento 2", ...]
+                        Return ONLY a JSON list of {num_topics} key topics, without explanations:
+                        ["Topic 1", "Topic 2", ...]
 
-                        Ogni argomento deve essere:
-                        - Specifico e concreto
-                        - Espresso in 2-5 parole
-                        - Rilevante per lo studio della materia"""
+                        Each topic must be:
+                        - Specific and concrete
+                        - Expressed in 2-5 words
+                        - Relevant to the study of the subject"""
 
         try:
             response = self._call_ai(prompt)
             if not response or not response.strip():
-                logger.warning("Risposta vuota dal servizio AI per estrazione topic.")
-                return [f"Argomento {i+1}" for i in range(num_topics)]
+                logger.warning("Empty response from AI service for topic extraction.")
+                return [f"Topic {i+1}" for i in range(num_topics)]
 
             payload_list = self._extract_json_array(response)
             if not isinstance(payload_list, list) or not payload_list:
-                raise ValueError("Formato non valido: la risposta non è una lista non vuota.")
+                raise ValueError("Invalid format: response is not a non-empty list.")
 
             topics: List[str] = []
             for t in payload_list[:num_topics]:
@@ -362,9 +363,9 @@ class ReflectionService:
                 if s:
                     topics.append(s)
             if not topics:
-                raise ValueError("Lista topics vuota dopo normalizzazione.")
+                raise ValueError("Topic list empty after normalization.")
             return topics[:num_topics]
 
         except Exception as e:
-            logger.warning("Errore estrazione topic: %s", e)
-            return [f"Argomento {i+1}" for i in range(num_topics)]
+            logger.warning("Topic extraction error: %s", e)
+            return [f"Topic {i+1}" for i in range(num_topics)]

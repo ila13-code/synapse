@@ -467,13 +467,13 @@ class SubjectWindow(QMainWindow):
         flashcards_icon = IconProvider.get_icon("cards", 18, get_icon_color())
         
         self.documents_tab = self.create_documents_tab()
-        self.tabs.addTab(self.documents_tab, documents_icon, "Documenti")
+        self.tabs.addTab(self.documents_tab, documents_icon, "Documents")
         
         self.generate_tab = self.create_generate_tab()
-        self.tabs.addTab(self.generate_tab, generate_icon, "Genera")
+        self.tabs.addTab(self.generate_tab, generate_icon, "Generate")
         
         self.flashcards_tab = self.create_flashcards_tab()
-        self.tabs.addTab(self.flashcards_tab, flashcards_icon, "Flashcard")
+        self.tabs.addTab(self.flashcards_tab, flashcards_icon, "Flashcards")
         
         main_layout.addWidget(self.tabs)
     
@@ -487,7 +487,7 @@ class SubjectWindow(QMainWindow):
         upload_card = self.create_upload_card()
         layout.addWidget(upload_card)
         
-        self.docs_header = QLabel("Documenti Caricati (0)")
+        self.docs_header = QLabel("Uploaded Documents (0)")
         self.docs_header.setStyleSheet(get_text_label_style(18, 700))
         layout.addWidget(self.docs_header)
         
@@ -560,8 +560,8 @@ class SubjectWindow(QMainWindow):
                 if not files:
                     QMessageBox.warning(
                         self,
-                        "File non validi",
-                        "Sono supportati solo file PDF e TXT"
+                        "Invalid Files",
+                        "Only PDF and TXT files are supported"
                     )
                     event.ignore()
                     return
@@ -571,7 +571,7 @@ class SubjectWindow(QMainWindow):
                     self._process_uploaded_file(fp)
             except Exception as e:
                 # Mostra un messaggio invece di crashare
-                QMessageBox.critical(self, "Errore", f"Errore durante il drop dei file: {e}")
+                QMessageBox.critical(self, "Error", f"Error dropping files: {e}")
                 event.ignore()
 
         # Collega gli handler locali alla card
@@ -586,18 +586,18 @@ class SubjectWindow(QMainWindow):
         IconProvider.setup_icon_label(icon_label, "upload", 48, "#8B5CF6")
         layout.addWidget(icon_label)
         
-        title_label = QLabel("Carica Documenti")
+        title_label = QLabel("Upload Documents")
         title_label.setStyleSheet(get_text_label_style(18, 600))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
         
-        desc_label = QLabel("Carica file PDF o TXT per creare flashcard\n(oppure trascina i file qui)")
+        desc_label = QLabel("Upload PDF or TXT files to create flashcards\n(or drag and drop files here)")
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet(get_caption_label_style(13))
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc_label)
         
-        upload_btn = QPushButton("Seleziona File")
+        upload_btn = QPushButton("Select Files")
         upload_btn.setProperty("class", "primary")
         upload_btn.clicked.connect(self.upload_document)
         layout.addWidget(upload_btn, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -665,8 +665,8 @@ class SubjectWindow(QMainWindow):
         # Rimosso: title_label "Genera Flashcard con AI"
         
         desc_label = QLabel(
-            "Analizza i tuoi documenti e genera flashcard personalizzate "
-            "utilizzando l'intelligenza artificiale"
+            "Analyze your documents and generate personalized flashcards "
+            "using AI"
         )
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet(get_text_label_style(16, 500))
@@ -677,7 +677,7 @@ class SubjectWindow(QMainWindow):
         primary_color = '#8B5CF6'
         doc_bg = get_card_background()
         
-        self.doc_count_label = QLabel("Documenti disponibili: 0")
+        self.doc_count_label = QLabel("Available documents: 0")
         self.doc_count_label.setStyleSheet(f"""
             font-size: 16px;
             font-weight: 600;
@@ -694,7 +694,7 @@ class SubjectWindow(QMainWindow):
         gen_layout.addWidget(web_search_frame)
         
         # === Numero di flashcard da generare ===
-        count_label = QLabel("Numero di Flashcard")
+        count_label = QLabel("Number of Flashcards")
         count_label.setStyleSheet(get_text_label_style(14, 600))
         gen_layout.addWidget(count_label)
 
@@ -708,7 +708,7 @@ class SubjectWindow(QMainWindow):
         except Exception:
             default_num = 10
         self.num_cards_spin.setValue(max(1, min(100, default_num)))
-        self.num_cards_spin.setToolTip("Numero massimo di flashcard da generare")
+        self.num_cards_spin.setToolTip("Maximum number of flashcards to generate")
         self.num_cards_spin.setMinimumHeight(44)
         self.num_cards_spin.setMinimumWidth(120)
         
@@ -755,14 +755,14 @@ class SubjectWindow(QMainWindow):
         gen_layout.addLayout(count_layout)
 
         # === NUOVA SEZIONE: Query utente per RAG ===
-        query_label = QLabel("Query Personalizzata (opzionale)")
+        query_label = QLabel("Custom Query (optional)")
         query_label.setStyleSheet(get_text_label_style(14, 600))
         gen_layout.addWidget(query_label)
         
         self.user_query_input = QTextEdit()
         self.user_query_input.setPlaceholderText(
-            "Inserisci una domanda o argomento specifico per guidare la generazione delle flashcard...\n"
-            "Esempio: 'Quali sono le differenze tra NoSQL e database relazionali?'"
+            "Enter a specific question or topic to guide flashcard generation...\n"
+            "Example: 'What are the differences between NoSQL and relational databases?'"
         )
         self.user_query_input.setFixedHeight(80)
         self.user_query_input.setStyleSheet(f"""
@@ -781,7 +781,7 @@ class SubjectWindow(QMainWindow):
         gen_layout.addWidget(self.user_query_input)
         # === FINE NUOVA SEZIONE ===
         
-        generate_btn = QPushButton(" Genera Flashcard")
+        generate_btn = QPushButton(" Generate Flashcards")
         generate_btn.setIcon(IconProvider.get_icon("sparkles", 18, "#FFFFFF"))
         generate_btn.setProperty("class", "primary")
         generate_btn.setFixedHeight(50)
@@ -808,16 +808,16 @@ class SubjectWindow(QMainWindow):
         text_layout = QVBoxLayout()
         text_layout.setSpacing(4)
         
-        title = QLabel("Ricerca Web")
+        title = QLabel("Web Search")
         title.setStyleSheet(get_text_label_style(14, 600))
         text_layout.addWidget(title)
         
         # Verifica se TAVILY_API_KEY è presente
         has_tavily_key = bool(os.environ.get('TAVILY_API_KEY', '').strip())
         
-        desc_text = "Integra informazioni aggiornate dal web"
+        desc_text = "Integrate up-to-date information from the web"
         if not has_tavily_key:
-            desc_text = "Richiede TAVILY_API_KEY (configura nelle impostazioni)"
+            desc_text = "Requires TAVILY_API_KEY (configure in settings)"
         
         desc = QLabel(desc_text)
         desc.setStyleSheet(get_caption_label_style(12))
@@ -830,7 +830,7 @@ class SubjectWindow(QMainWindow):
         # Disabilita il toggle se non c'è la chiave
         if not has_tavily_key:
             self.web_search_checkbox.setEnabled(False)
-            self.web_search_checkbox.setToolTip("Configura TAVILY_API_KEY nelle impostazioni per abilitare")
+            self.web_search_checkbox.setToolTip("Configure TAVILY_API_KEY in settings to enable")
         layout.addWidget(self.web_search_checkbox)
         
         return frame
@@ -850,7 +850,7 @@ class SubjectWindow(QMainWindow):
         header_layout.addWidget(self.flashcard_counter)
         header_layout.addStretch()
         
-        export_btn = QPushButton(" Esporta")
+        export_btn = QPushButton(" Export")
         export_btn.setIcon(IconProvider.get_icon("download", 18, get_icon_color()))
         export_btn.setProperty("class", "secondary")
         export_btn.clicked.connect(self.export_flashcards)
@@ -864,13 +864,13 @@ class SubjectWindow(QMainWindow):
         action_layout = QHBoxLayout()
         action_layout.setSpacing(12)
         
-        edit_btn = QPushButton(" Modifica")
+        edit_btn = QPushButton(" Edit")
         edit_btn.setIcon(IconProvider.get_icon("edit", 18, get_icon_color()))
         edit_btn.setProperty("class", "secondary")
         edit_btn.clicked.connect(self.edit_current_flashcard)
         action_layout.addWidget(edit_btn)
         
-        delete_btn = QPushButton(" Elimina")
+        delete_btn = QPushButton(" Delete")
         delete_btn.setIcon(IconProvider.get_icon("trash", 18, "#EF4444"))
         delete_btn.setProperty("class", "secondary")
         delete_btn.clicked.connect(self.delete_current_flashcard)
@@ -898,7 +898,7 @@ class SubjectWindow(QMainWindow):
         self.flashcard_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.flashcard_layout.setSpacing(20)
         
-        self.flashcard_label = QTextEdit("Nessuna flashcard disponibile")
+        self.flashcard_label = QTextEdit("No flashcards available")
         self.flashcard_label.setReadOnly(True) 
         self.flashcard_label.setWordWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere) 
         self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter) 
@@ -913,7 +913,7 @@ class SubjectWindow(QMainWindow):
         self.difficulty_label.hide()
         self.flashcard_layout.addWidget(self.difficulty_label)
         
-        self.hint_label = QLabel("Clicca per girare la carta")
+        self.hint_label = QLabel("Click to flip the card")
         self.hint_label.setStyleSheet(get_caption_label_style(14) + " margin-top: 20px;")
         self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.flashcard_layout.addWidget(self.hint_label)
@@ -926,20 +926,20 @@ class SubjectWindow(QMainWindow):
         nav_layout = QHBoxLayout()
         nav_layout.setSpacing(12)
         
-        self.prev_btn = QPushButton(" Precedente")
+        self.prev_btn = QPushButton(" Previous")
         self.prev_btn.setIcon(IconProvider.get_icon("arrow-left", 16, get_icon_color()))
         self.prev_btn.setProperty("class", "secondary")
         self.prev_btn.setFixedWidth(150)
         self.prev_btn.clicked.connect(self.previous_flashcard)
         nav_layout.addWidget(self.prev_btn)
         
-        flip_btn = QPushButton("Gira Carta")
+        flip_btn = QPushButton("Flip Card")
         flip_btn.setProperty("class", "secondary")
         flip_btn.setFixedWidth(150)
         flip_btn.clicked.connect(self.flip_card)
         nav_layout.addWidget(flip_btn)
         
-        self.next_btn = QPushButton("Successivo ▶")
+        self.next_btn = QPushButton("Next ▶")
         self.next_btn.setProperty("class", "secondary")
         self.next_btn.setFixedWidth(150)
         self.next_btn.clicked.connect(self.next_flashcard)
@@ -967,7 +967,7 @@ class SubjectWindow(QMainWindow):
         self.docs_header.setText(f"Documenti Caricati ({len(documents)})")
         
         if not documents:
-            empty_label = QLabel("Nessun documento caricato ancora")
+            empty_label = QLabel("No documents uploaded yet")
             empty_label.setStyleSheet(get_caption_label_style(14) + " padding: 40px;")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.docs_layout.addWidget(empty_label)
@@ -984,9 +984,9 @@ class SubjectWindow(QMainWindow):
         options |= QFileDialog.Option.DontUseNativeDialog
         file_paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Seleziona Documenti",
+            "Select Documents",
             "",
-            "Documenti (*.txt *.pdf)",
+            "Documents (*.txt *.pdf)",
             options=options
         )
 
@@ -1034,8 +1034,8 @@ class SubjectWindow(QMainWindow):
     def _process_uploaded_file(self, file_path):
         """Processa un singolo file caricato in background con feedback visivo"""
         # Mostra dialog di loading
-        loading = QProgressDialog("Caricamento in corso...", None, 0, 0, self)
-        loading.setWindowTitle("Caricamento Documento")
+        loading = QProgressDialog("Uploading...", None, 0, 0, self)
+        loading.setWindowTitle("Document Upload")
         loading.setWindowModality(Qt.WindowModality.WindowModal)
         loading.setCancelButton(None)  # Non cancellabile
         loading.setMinimumDuration(0)
@@ -1109,8 +1109,8 @@ class SubjectWindow(QMainWindow):
         """Elimina un documento dalla lista (non dal disco)"""
         reply = QMessageBox.question(
             self,
-            "Conferma Rimozione",
-            "Sei sicuro di voler rimuovere questo documento dalla materia?",
+            "Confirm Removal",
+            "Are you sure you want to remove this document from the subject?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
@@ -1131,20 +1131,20 @@ class SubjectWindow(QMainWindow):
                 result = self.db.delete_document(doc_id, delete_physical_file=False)
                 if result:
                     # Mostra snackbar che si chiude dopo 1 secondo
-                    self._show_snackbar("Documento rimosso!", duration=1000)
+                    self._show_snackbar("Document removed!", duration=1000)
                     self.load_documents()
                     self.update_doc_count()
                 else:
                     QMessageBox.warning(
                         self,
-                        "Errore",
-                        "Errore durante la rimozione"
+                        "Error",
+                        "Error during removal"
                     )
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    "Errore",
-                    f"Errore durante la rimozione del documento: {e}"
+                    "Error",
+                    f"Error removing document: {e}"
                 )
     
     def update_doc_count(self):
@@ -1162,8 +1162,8 @@ class SubjectWindow(QMainWindow):
         if not documents:
             QMessageBox.warning(
                 self,
-                "Nessun Documento",
-                "Carica almeno un documento prima di generare flashcard"
+                "No Documents",
+                "Upload at least one document before generating flashcards"
             )
             return
         
@@ -1172,15 +1172,15 @@ class SubjectWindow(QMainWindow):
         if not has_content:
             QMessageBox.warning(
                 self,
-                "Contenuto Vuoto",
-                "I documenti non contengono testo estraibile"
+                "Empty Content",
+                "Documents contain no extractable text"
             )
             return
         
         # Mostra progress dialog con più dettagli
         progress = QProgressDialog(
-            "Inizializzando generazione...", 
-            "Annulla", 
+            "Initializing generation...", 
+            "Cancel", 
             0, 
             100,  # Range 0-100 per percentuale
             self
@@ -1208,10 +1208,10 @@ class SubjectWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(
                     self,
-                    "Errore LLM Locale",
-                    f"Impossibile connettersi al server LLM locale su {base_url}.\n"
-                    f"Assicurati che LM Studio o Ollama siano in esecuzione.\n\n"
-                    f"Errore: {str(e)}"
+                    "Local LLM Error",
+                    f"Unable to connect to local LLM server at {base_url}.\n"
+                    f"Ensure LM Studio or Ollama is running.\n\n"
+                    f"Error: {str(e)}"
                 )
                 return
         else:
@@ -1221,10 +1221,10 @@ class SubjectWindow(QMainWindow):
             if not api_key:
                 QMessageBox.warning(
                     self,
-                    "API Key Mancante",
-                    "Configura l'API Key di Google Gemini nel file .env prima di generare flashcard.\n\n"
-                    "Apri il file .env e imposta:\n"
-                    "GEMINI_API_KEY=la-tua-api-key"
+                    "Missing API Key",
+                    "Configure Google Gemini API Key in .env file before generating flashcards.\n\n"
+                    "Open .env file and set:\n"
+                    "GEMINI_API_KEY=your-api-key"
                 )
                 return
             
@@ -1288,8 +1288,8 @@ class SubjectWindow(QMainWindow):
         if not flashcards:
             QMessageBox.warning(
                 self,
-                "Nessuna Flashcard",
-                "Non è stato possibile generare flashcard"
+                "No Flashcards",
+                "Could not generate flashcards"
             )
             return
         
@@ -1304,8 +1304,8 @@ class SubjectWindow(QMainWindow):
         
         QMessageBox.information(
             self,
-            "Successo",
-            f"Generate {len(flashcards)} flashcard!"
+            "Success",
+            f"Generated {len(flashcards)} flashcards!"
         )
         
         self.load_flashcards()
@@ -1336,7 +1336,7 @@ class SubjectWindow(QMainWindow):
             self.flashcard_card.hide()
             self.flashcard_counter.setText("0 / 0")
             # Mostra solo un messaggio testuale senza la card
-            self.hint_label.setText("Nessuna flashcard disponibile. Genera alcune flashcard dalla tab 'Genera'.")
+            self.hint_label.setText("No flashcards available. Generate some flashcards from the 'Generate' tab.")
             self.hint_label.show()
             return
         
@@ -1357,7 +1357,7 @@ class SubjectWindow(QMainWindow):
             self.flashcard_label.setHtml(back_text)
             self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter) # Ripristina allineamento
             
-            self.hint_label.setText("Risposta")
+            self.hint_label.setText("Answer")
             
             # Mostra difficoltà
             difficulty = card.get('difficulty', 'medium')
@@ -1375,9 +1375,9 @@ class SubjectWindow(QMainWindow):
             
             # Mappa per visualizzazione in italiano
             difficulty_display = {
-                'easy': 'Facile',
-                'medium': 'Medio',
-                'hard': 'Difficile'
+                'easy': 'Easy',
+                'medium': 'Medium',
+                'hard': 'Hard'
             }
             
             # Recupera i colori del tema
@@ -1401,7 +1401,7 @@ class SubjectWindow(QMainWindow):
             self.flashcard_label.setHtml(front_text)
             self.flashcard_label.setAlignment(Qt.AlignmentFlag.AlignCenter) # Ripristina allineamento
             
-            self.hint_label.setText("Clicca per vedere la risposta")
+            self.hint_label.setText("Click to see the answer")
             self.difficulty_label.hide()
     
     def flip_card(self):
@@ -1444,8 +1444,8 @@ class SubjectWindow(QMainWindow):
         
         reply = QMessageBox.question(
             self,
-            "Conferma Eliminazione",
-            "Sei sicuro di voler eliminare questa flashcard?",
+            "Confirm Deletion",
+            "Are you sure you want to delete this flashcard?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
@@ -1475,8 +1475,8 @@ class SubjectWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(
                     self,
-                    "Errore",
-                    f"Errore durante l'eliminazione: {str(e)}"
+                    "Error",
+                    f"Error during deletion: {str(e)}"
                 )
     
     def export_flashcards(self):
@@ -1484,8 +1484,8 @@ class SubjectWindow(QMainWindow):
         if not self.flashcards:
             QMessageBox.warning(
                 self,
-                "Nessuna Flashcard",
-                "Non ci sono flashcard da esportare"
+                "No Flashcards",
+                "No flashcards to export"
             )
             return
         
@@ -1495,7 +1495,7 @@ class SubjectWindow(QMainWindow):
         options = QFileDialog.Options()
         file_path, selected_filter = QFileDialog.getSaveFileName(
             self,
-            "Esporta Flashcard",
+            "Export Flashcards",
             f"{self.subject_data['name']}_flashcards",
             "CSV (*.csv);;TSV (*.tsv);;APKG (*.apkg)",
             options=options
@@ -1524,14 +1524,14 @@ class SubjectWindow(QMainWindow):
             
             QMessageBox.information(
                 self,
-                "Successo",
-                "Flashcard esportate con successo!"
+                "Success",
+                "Flashcards exported successfully!"
             )
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Errore",
-                f"Errore durante l'esportazione: {str(e)}"
+                "Error",
+                f"Error during export: {str(e)}"
             )
     
     def apply_theme(self):
@@ -1579,8 +1579,8 @@ class SubjectWindow(QMainWindow):
         if not self.flashcards:
             QMessageBox.warning(
                 self,
-                "Nessuna Flashcard",
-                "Non ci sono flashcard da esportare"
+                "No Flashcards",
+                "No flashcards to export"
             )
             return
         
