@@ -474,6 +474,9 @@ class SettingsDialog(QDialog):
         # Show/hide URL/Model fields
         try:
             self.local_llm_settings_widget.setVisible(checked)
+            # Hide Gemini and Tavily columns if Local LLM is enabled
+            self.gemini_col.setVisible(not checked)
+            self.tavily_col.setVisible(not checked)
         except Exception:
             # Widget might not be initialized yet
             pass
@@ -677,6 +680,8 @@ class SettingsDialog(QDialog):
         # Show or hide Local LLM settings based on state
         try:
             self.local_llm_settings_widget.setVisible(use_local_llm)
+            self.gemini_col.setVisible(not use_local_llm)
+            self.tavily_col.setVisible(not use_local_llm)
         except Exception:
             pass
         
