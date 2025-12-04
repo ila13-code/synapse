@@ -90,13 +90,23 @@ The LLM is instructed to act as an expert in metacognition. The prompt imposes "
 
 \begin{lstlisting}[language=Python, caption=Prompt for draft generation]
 prompt = f"""
-You are an expert in learning and metacognition...
+You are an expert in learning and metacognition. Your goal is to create ONE 'atomic' flashcard based on Andy Matuschak's principles.
+
+REQUIRED TOPIC (MANDATORY): {topic}
+
+ATTENTION: The flashcard MUST ONLY be about '{topic}'.
+- If the context does not contain information relevant to '{topic}', indicate that there is insufficient information.
+- DO NOT create flashcards on topics other than '{topic}'.
+
+Use ONLY information from the following context that is RELEVANT to '{topic}':
+{context}
+
 Follow these 5 ABSOLUTE RULES:
-1. Focused: The question must address ONLY ONE concept.
-2. Precise: It must not be ambiguous.
-3. Consistent: The answer must be the only correct one.
-4. Ask "Why": Prefer questions about implications.
-5. Cognitive Effort: The answer must NOT be intuitive from the question.
+1.  **Focused**: The question (front) must relate to ONLY ONE concept or fact RELATED TO '{topic}'.
+2.  **Precise**: The question must not be ambiguous. It must make it clear exactly what is required on '{topic}'.
+3.  **Consistent**: The answer (back) must be the only correct answer and always the same.
+4.  **Ask 'Why'**: If possible, prefer questions about 'why' or implications rather than dry definitions.
+5.  **Cognitive Effort**: The answer should NOT be obvious from the question (avoid trivial clues or binary Yes/No questions).
 
 Return the response in JSON format with this exact structure:
 {{
@@ -119,13 +129,27 @@ In this phase, the system assumes an "adversarial" role. A second prompt asks th
 
 \begin{lstlisting}[language=Python, caption=Prompt for critique]
 prompt = f"""
-You are an expert critic...
+You are an expert reviewer of educational materials who follows Andy Matuschak's principles.
+
+Analyse this flashcard based on the context provided.
+
+FLASHCARD:
+Question: {front}
+Answer: {back}
+
+AVAILABLE CONTEXT:
+{context}
+
 Evaluate the flashcard EXCLUSIVELY according to these 5 RULES:
-1. Focused: Does it ask for a single concept? Or is it too broad?
-2. Precise: Is it ambiguous?
-3. Context: Is the answer correct and based ONLY on the context?
-...
+1.  **Focused**: Does it ask about a single concept? Or is it too broad (e.g., does it ask for a list)?
+2.  **Precise**: Is it ambiguous? Is it clear what it wants?
+3.  **Context**: Is the answer correct and based ONLY on the context?
+4.  **Cognitive Effort**: Is the answer too obvious when reading the question?
+5.  **Conceptual**: Is it a dry definition (negative) or does it ask for the 'why', a difference, or an implication (positive)?
+
 Provide CONSTRUCTIVE criticism in 2-3 sentences.
+- If the flashcard is already excellent and follows the rules, say so (e.g., "Excellent, follows all the principles").
+- If it does not follow the rules, explain WHAT to improve (e.g. 'It is not focused, it asks two things. Break it down.' OR 'The question is too vague, make it more precise.' OR 'The answer is obvious, rephrase the question to require more effort.').
 """
 \end{lstlisting}
 
@@ -145,17 +169,21 @@ The RAG module (\texttt{rag\_service.py}) is the heart of Synapse's "memory". Th
 To understand the operation, let's consider a practical example. Imagine the user asks: \textit{"What is the Reflection pattern?"}.
 
 \begin{enumerate}
-    \item \textbf{Retrieval:} The system converts the question into a numerical vector (embedding) and searches the database (Qdrant) for text fragments (chunks) from the PDFs that are semantically closest to the question.
-    \item \textbf{Augmentation:} The found fragments are inserted into the system prompt. The prompt becomes similar to:
-    \begin{quote}
-    \textit{"Use ONLY the following information to answer: [Text extracted from PDF: 'Reflection is a pattern...']. Question: What is the Reflection pattern?"}
-    \end{quote}
-    \item \textbf{Generation:} The LLM generates the answer based exclusively on the provided context, ensuring that the explanation is faithful to the study material and not generic.
+\item \textbf{Retrieval:} The system creates the embedding of that question (converting it into a numerical vector) and searches the database (Qdrant) for text fragments (chunks) from the PDFs that are semantically closest to the question.
+
+\item \textbf{Augmentation:} The found fragments are inserted into the system prompt. The prompt becomes similar to:
+
+\begin{lstlisting}[language=Python, caption=Example of RAG augmented prompt]
+Use ONLY the following information to answer:
+[Text extracted from PDF: 'Reflection is a pattern...'].
+Question: What is the Reflection pattern?"
+\end{lstlisting}
+    
+\item \textbf{Generation:} The LLM generates the answer based exclusively on the provided context, ensuring that the explanation is faithful to the study material and not generic.
 \end{enumerate}
 
 \subsection{Recursive Chunking}
-Retrieval quality depends drastically on how documents are divided (chunking). A naive approach, cutting text every fixed $N$ characters, risks splitting sentences in half or separating related concepts, making the context incomprehensible to the LLM.
-
+Retrieval quality depends drastically on how documents are divided (chunking). A naive approach, cutting text every fixed $N$ characters, risks splitting sentences in half or separating related concepts, making the context incomprehensible to the LLM.\\
 Synapse adopts a \textbf{Recursive Character Text Splitting} strategy, which aims to preserve text semantics by respecting the natural structure of language. The algorithm does not cut arbitrarily but tries to divide the text using a hierarchy of separators, in order of priority:
 
 \begin{enumerate}
@@ -193,9 +221,11 @@ The process takes place in three steps:
 \end{itemize}
 
 \subsection{Fallback Strategy}
-The service is designed to be resilient:
-1.  **AI Engine (Tavily):** Used as the primary source for its ability to aggregate and clean data from multiple web sources in real-time.
-2.  **Wikipedia API:** If the primary service is unreachable or not configured, the system automatically falls back to public Wikipedia APIs to obtain general definitions and concepts.
+The service is designed to be resilient:\\
+\begin{enumerate}
+\item \textbf{AI Engine (Tavily):} Used as the primary source for its ability to aggregate and clean data from multiple web sources in real-time.
+\item \textbf{Wikipedia API:} If the primary service is unreachable or not configured, the system automatically falls back to public Wikipedia APIs to obtain general definitions and concepts.
+\end{enumerate}
 
 \section{Export and Interoperability}
 To be truly useful, the generated material must be usable in daily study tools. The \texttt{export\_service.py} service handles this need.
