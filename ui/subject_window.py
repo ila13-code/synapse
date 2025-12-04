@@ -586,18 +586,18 @@ class SubjectWindow(QMainWindow):
         IconProvider.setup_icon_label(icon_label, "upload", 48, "#8B5CF6")
         layout.addWidget(icon_label)
         
-        title_label = QLabel("Carica Documenti")
+        title_label = QLabel("Upload Documents")
         title_label.setStyleSheet(get_text_label_style(18, 600))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
         
-        desc_label = QLabel("Carica file PDF o TXT per creare flashcard\n(oppure trascina i file qui)")
+        desc_label = QLabel("Upload PDF or TXT files.\n(or drag and drop files here)")
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet(get_caption_label_style(13))
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc_label)
         
-        upload_btn = QPushButton("Seleziona File")
+        upload_btn = QPushButton("Select Files")
         upload_btn.setProperty("class", "primary")
         upload_btn.clicked.connect(self.upload_document)
         layout.addWidget(upload_btn, alignment=Qt.AlignmentFlag.AlignCenter)
