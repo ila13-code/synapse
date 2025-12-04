@@ -89,12 +89,15 @@ class LocalLLMService:
 
         prompt = f"""You are an expert assistant in creating flashcards for university students. Your goal is to apply Andy Matuschak's principles to create "atomic" flashcards that foster understanding.
 
+                    CRITICAL: You MUST generate ALL flashcards in ENGLISH ONLY, regardless of the language of the source content.
+                    Even if the content is in Italian, Spanish, French, or any other language, your flashcards MUST be in English.
+
                     {web_search_instruction}
 
                     Content:
                     {content}
 
-                    IMPORTANTE: Segui queste 5 REGOLE ASSOLUTE per OGNI flashcard che crei:
+                    IMPORTANT: Follow these 5 ABSOLUTE RULES for EVERY flashcard you create:
                     1.  **Scomponi (Focalizzata)**: Ogni flashcard deve riguardare UN SOLO concetto o fatto. NON creare flashcard che chiedono liste (es. "Quali sono i 3 tipi di X?"). Invece, crea 3 card separate o usa la scomposizione (es. "Un tipo di X è...").
                     2.  **Precisa**: La domanda non deve essere ambigua.
                     3.  **Chiedi il "Perché"**: Oltre ai fatti, crea domande sul "perché" un concetto funziona in un certo modo (es. "Perché l'algoritmo X usa una coda invece di uno stack?").
