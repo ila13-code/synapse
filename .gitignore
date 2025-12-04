@@ -51,3 +51,5 @@ report/report.out
 report/report.synctex.gz
 report/report.toc
 report/report.bbl
+report/report.fls
+report/report.fdb_latexmk

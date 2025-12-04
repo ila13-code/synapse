@@ -47,7 +47,7 @@
 
 \maketitle
 \begin{abstract}
-\textit{Synapse} is an LLM-based system designed to support university studies through the automatic generation of educational material. This report explores the system architecture, focusing on the integration of agentic design patterns such as \textbf{Retrieval-Augmented Generation}, \textbf{Reflection}; \textbf{Tool Use}, and advanced export functionalities.
+\textit{Synapse} is an LLM-based system designed to support university studies through the automatic generation of educational material. This report explores the system architecture, focusing on the integration of agentic design patterns such as \textbf{Retrieval-Augmented Generation}, \textbf{Reflection}, \textbf{Few-Shot}, \textbf{Tool Use}, and advanced export functionalities.
 \end{abstract}
 
 \tableofcontents
@@ -59,6 +59,7 @@ We created \textit{Synapse} to solve these problems through an architecture that
 \begin{itemize}
     \item \textbf{RAG:} To ground LLM responses in user-provided documents.
     \item \textbf{Reflection:} To improve the quality and correctness of generated flashcards through a draft-critique-refine cycle.
+    \item \textbf{Few-Shot:} To enhance LLM performance by providing examples within prompts.
     \item \textbf{Tool Use:} By searching on the web to supplement user-provided knowledge (if provided) with up-to-date information from the web.
     \item \textbf{Exporting Capabilities:} To produce flashcards compatible also with the popular spaced repetition study tool Anki.
 \end{itemize}
@@ -79,14 +80,12 @@ The logical core resides in the \texttt{services/} directory, which decouples re
 \subsection{User Interface}
 The graphical interface is built with \textbf{PyQt6}.\\
 The UI structure (\texttt{ui/}) separates presentation logic (`main\_window.py`, `subject\_window.py`) from configuration dialogs (`settings\_dialog.py`).
-
-\section{Agentic Design Patterns: The Reflection Pattern}
-One of Synapse's main innovations is the implementation of the \textbf{Reflection} pattern. Instead of passively accepting the LLM's output, the system establishes a self-improvement cycle.
-
-\subsection{The Draft-Critique-Refine Cycle}
+\clearpage
+\section{Agentic Design Patterns: Reflection }
+Instead of passively accepting the LLM's output, the system establishes a self-improvement cycle.
 The flashcard generation process follows three distinct phases, orchestrated by \texttt{reflection\_service.py}:
 
-\subsubsection{1. Draft (Draft Generation)}
+\subsection{1. Draft (Draft Generation)}
 The LLM is instructed to act as an expert in metacognition. The prompt imposes "atomic" rules based on Andy Matuschak's principles, requiring structured JSON output.
 
 \begin{lstlisting}[language=Python, caption=Prompt for draft generation]
@@ -101,7 +100,7 @@ Follow these 5 ABSOLUTE RULES:
 Return the response in JSON format..."""
 \end{lstlisting}
 
-\subsubsection{2. Critique (Critical Analysis)}
+\subsection{2. Critique (Critical Analysis)}
 In this phase, the system assumes an "adversarial" role. A second prompt asks the LLM to evaluate the newly generated draft. This is not a simple review, but a validation against specific criteria.
 
 \begin{lstlisting}[language=Python, caption=Prompt for critique]
@@ -114,7 +113,7 @@ Evaluate the flashcard EXCLUSIVELY according to these 5 RULES:
 Provide CONSTRUCTIVE criticism in 2-3 sentences."""
 \end{lstlisting}
 
-\subsubsection{3. Refine (Refinement)}
+\subsection{3. Refine (Refinement)}
 If the critique highlights defects (detected via keyword matching such as "not focused", "vague", etc.), the system invokes the LLM again, passing:
 \begin{enumerate}
     \item The original flashcard.
@@ -123,7 +122,7 @@ If the critique highlights defects (detected via keyword matching such as "not f
 \end{enumerate}
 The model is forced to produce a new version that specifically resolves the reported issues.
 
-\section{Retrieval-Augmented Generation (RAG)}
+\section{Agentic Design Patterns: RAG }
 The RAG module (\texttt{rag\_service.py}) is the heart of Synapse's "memory". This technology overcomes the static knowledge limit of LLMs by providing dynamic access to user-uploaded documents (PDFs, slides).
 
 \subsection{How it works: A Simple Example}
