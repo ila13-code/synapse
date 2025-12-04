@@ -39,16 +39,15 @@
 
 \lstset{style=mystyle}
 
-\title{\textbf{Technical Report: Synapse - Neurosymbolic AI and RAG for Learning}}
+\title{\textbf{Technical Report: Synapse \\LLM based system for Learning}}
 \author{Synapse Group}
 \date{\today}
 
 \begin{document}
 
 \maketitle
-
 \begin{abstract}
-\textit{Synapse} is an LLM-based system designed to support university studies through the automatic generation of educational material. This report explores the system architecture, focusing on the integration of agentic design patterns such as \textbf{Retrieval-Augmented Generation}, \textbf{Reflection}; integration with web search services, and advanced export functionalities.
+\textit{Synapse} is an LLM-based system designed to support university studies through the automatic generation of educational material. This report explores the system architecture, focusing on the integration of agentic design patterns such as \textbf{Retrieval-Augmented Generation}, \textbf{Reflection}; \textbf{Tool Use}, and advanced export functionalities.
 \end{abstract}
 
 \tableofcontents
@@ -58,10 +57,10 @@
 The evolution of Large Language Models (LLMs) has opened new possibilities in the field of assisted education. However, the "naive" use of these models presents significant limitations: hallucinations, superficiality in responses, and a lack of adherence to specific study materials.\\
 We created \textit{Synapse} to solve these problems through an architecture that combines:
 \begin{itemize}
-    \item \textbf{RAG (Retrieval-Augmented Generation):} To ground LLM responses in user-provided documents.
-    \item \textbf{Neurosymbolic AI (Reflection Pattern):} To ensure the quality and correctness of generated flashcards through a draft-critique-refine cycle.
-    \item \textbf{Web Search Integration:} To supplement local knowledge with up-to-date information from the web.
-    \item \textbf{Export Capabilities:} To produce interoperable study materials compatible with popular tools like Anki.
+    \item \textbf{RAG:} To ground LLM responses in user-provided documents.
+    \item \textbf{Reflection:} To improve the quality and correctness of generated flashcards through a draft-critique-refine cycle.
+    \item \textbf{Tool Use:} By searching on the web to supplement user-provided knowledge (if provided) with up-to-date information from the web.
+    \item \textbf{Exporting Capabilities:} To produce flashcards compatible also with the popular spaced repetition study tool Anki.
 \end{itemize}
 
 \section{System Architecture}
@@ -72,15 +71,16 @@ The logical core resides in the \texttt{services/} directory, which decouples re
 \begin{itemize}
     \item \texttt{ai\_service.py}: Abstraction for interaction with LLMs (supports Google Gemini and local models via Ollama).
     \item \texttt{rag\_service.py}: Handles document indexing, chunking, and vector retrieval.
-    \item \texttt{reflection\_service.py}: Implements neurosymbolic logic for flashcard generation and validation.
+    \item \texttt{reflection\_service.py}: Implements the logic for the draft-critique-refine cycle of the flashcard generation.
     \item \texttt{web\_search\_service.py}: Provides additional context from the web when local documents are insufficient.
     \item \texttt{export\_service.py}: Manages data conversion into interoperable formats (CSV, Anki).
 \end{itemize}
 
 \subsection{User Interface}
-The graphical interface is built with \textbf{PyQt6}, offering a native and responsive desktop experience. The UI structure (\texttt{ui/}) separates presentation logic (`main\_window.py`, `subject\_window.py`) from configuration dialogs (`settings\_dialog.py`).
+The graphical interface is built with \textbf{PyQt6}.\\
+The UI structure (\texttt{ui/}) separates presentation logic (`main\_window.py`, `subject\_window.py`) from configuration dialogs (`settings\_dialog.py`).
 
-\section{Neurosymbolic AI: The Reflection Pattern}
+\section{Agentic Design Patterns: The Reflection Pattern}
 One of Synapse's main innovations is the implementation of the \textbf{Reflection} pattern. Instead of passively accepting the LLM's output, the system establishes a self-improvement cycle.
 
 \subsection{The Draft-Critique-Refine Cycle}
