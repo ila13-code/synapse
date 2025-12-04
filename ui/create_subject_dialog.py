@@ -17,7 +17,7 @@ class CreateSubjectDialog(QDialog):
         self.setup_ui()
     
     def setup_ui(self):
-        self.setWindowTitle("Crea Nuova Materia")
+        self.setWindowTitle("Create New Subject")
         self.setFixedSize(520, 540)
         self.setModal(True)
         
@@ -44,7 +44,7 @@ class CreateSubjectDialog(QDialog):
     
     def create_header(self, parent_layout):
         """Crea l'intestazione del dialog"""
-        title = QLabel("Crea Nuova Materia")
+        title = QLabel("Create New Subject")
         title.setStyleSheet(f"""
             font-size: 22px; 
             font-weight: 700; 
@@ -52,7 +52,7 @@ class CreateSubjectDialog(QDialog):
         """)
         parent_layout.addWidget(title)
         
-        subtitle = QLabel("Organizza il tuo studio creando una nuova materia")
+        subtitle = QLabel("Organize your study by creating a new subject")
         subtitle.setStyleSheet(f"""
             font-size: 13px; 
             color: {get_caption_text_color()};
@@ -63,7 +63,7 @@ class CreateSubjectDialog(QDialog):
     def create_form_fields(self, parent_layout):
         """Crea i campi del form"""
         # Nome materia
-        name_label = QLabel("Nome Materia *")
+        name_label = QLabel("Subject Name *")
         name_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
@@ -72,12 +72,12 @@ class CreateSubjectDialog(QDialog):
         parent_layout.addWidget(name_label)
         
         self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("es. Matematica, Storia, Biologia...")
+        self.name_input.setPlaceholderText("e.g. Math, History, Biology...")
         self.name_input.setMinimumHeight(44)
         parent_layout.addWidget(self.name_input)
         
         # Descrizione
-        desc_label = QLabel("Descrizione (opzionale)")
+        desc_label = QLabel("Description (optional)")
         desc_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
@@ -86,13 +86,13 @@ class CreateSubjectDialog(QDialog):
         parent_layout.addWidget(desc_label)
         
         self.desc_input = QTextEdit()
-        self.desc_input.setPlaceholderText("Aggiungi una breve descrizione...")
+        self.desc_input.setPlaceholderText("Add a short description...")
         self.desc_input.setFixedHeight(90)
         parent_layout.addWidget(self.desc_input)
     
     def create_color_picker(self, parent_layout):
         """Crea il selettore di colore"""
-        color_label = QLabel("Colore")
+        color_label = QLabel("Color")
         color_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
@@ -169,7 +169,7 @@ class CreateSubjectDialog(QDialog):
         button_layout.setSpacing(12)
         
         # Annulla
-        cancel_btn = QPushButton("Annulla")
+        cancel_btn = QPushButton("Cancel")
         cancel_btn.setProperty("class", "secondary")
         cancel_btn.setMinimumHeight(44)
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -177,7 +177,7 @@ class CreateSubjectDialog(QDialog):
         button_layout.addWidget(cancel_btn)
         
         # Crea
-        create_btn = QPushButton("Crea Materia")
+        create_btn = QPushButton("Create Subject")
         create_btn.setProperty("class", "primary")
         create_btn.setMinimumHeight(44)
         create_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -193,8 +193,8 @@ class CreateSubjectDialog(QDialog):
         if not name:
             QMessageBox.warning(
                 self, 
-                "Campo Obbligatorio", 
-                "Il nome della materia è obbligatorio"
+                "Required Field", 
+                "Subject name is required"
             )
             return
         
@@ -206,8 +206,8 @@ class CreateSubjectDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(
                 self, 
-                "Errore", 
-                f"Errore nella creazione della materia:\n{str(e)}"
+                "Error", 
+                f"Error creating subject:\n{str(e)}"
             )
     
     def center_on_screen(self):

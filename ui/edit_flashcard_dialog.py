@@ -18,7 +18,7 @@ class EditFlashcardDialog(QDialog):
         self.setup_ui()
     
     def setup_ui(self):
-        self.setWindowTitle("Modifica Flashcard")
+        self.setWindowTitle("Edit Flashcard")
         self.setFixedSize(600, 600)
         self.setModal(True)
         
@@ -53,7 +53,7 @@ class EditFlashcardDialog(QDialog):
         text_layout = QVBoxLayout()
         text_layout.setSpacing(4)
         
-        title = QLabel("Modifica Flashcard")
+        title = QLabel("Edit Flashcard")
         title.setStyleSheet(f"""
             font-size: 22px; 
             font-weight: 700; 
@@ -61,7 +61,7 @@ class EditFlashcardDialog(QDialog):
         """)
         text_layout.addWidget(title)
         
-        subtitle = QLabel("Modifica il contenuto e la difficoltà della flashcard")
+        subtitle = QLabel("Edit the content and difficulty of the flashcard")
         subtitle.setStyleSheet(f"""
             font-size: 13px; 
             color: {get_caption_text_color()};
@@ -74,7 +74,7 @@ class EditFlashcardDialog(QDialog):
     def create_form_fields(self, parent_layout):
         """Crea i campi del form"""
         # Domanda (fronte)
-        front_label = QLabel("Domanda (Fronte)")
+        front_label = QLabel("Question (Front)")
         front_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
@@ -88,7 +88,7 @@ class EditFlashcardDialog(QDialog):
         parent_layout.addWidget(self.front_input)
         
         # Risposta (retro)
-        back_label = QLabel("Risposta (Retro)")
+        back_label = QLabel("Answer (Back)")
         back_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
@@ -102,7 +102,7 @@ class EditFlashcardDialog(QDialog):
         parent_layout.addWidget(self.back_input)
         
         # Difficoltà
-        diff_label = QLabel("Difficoltà")
+        diff_label = QLabel("Difficulty")
         diff_label.setStyleSheet(f"""
             font-size: 14px; 
             font-weight: 600; 
@@ -111,20 +111,20 @@ class EditFlashcardDialog(QDialog):
         parent_layout.addWidget(diff_label)
         
         self.diff_combo = QComboBox()
-        self.diff_combo.addItems(['facile', 'medio', 'difficile'])
+        self.diff_combo.addItems(['Easy', 'Medium', 'Hard'])
         
-        # Mappa i valori dal database
+        # Map values from database
         difficulty_map = {
-            'easy': 'facile',
-            'medium': 'medio',
-            'hard': 'difficile',
-            'facile': 'facile',
-            'medio': 'medio',
-            'difficile': 'difficile'
+            'easy': 'Easy',
+            'medium': 'Medium',
+            'hard': 'Hard',
+            'facile': 'Easy',
+            'medio': 'Medium',
+            'difficile': 'Hard'
         }
         
-        current_difficulty = self.flashcard_data.get('difficulty', 'medio')
-        mapped_difficulty = difficulty_map.get(current_difficulty, 'medio')
+        current_difficulty = self.flashcard_data.get('difficulty', 'medium')
+        mapped_difficulty = difficulty_map.get(current_difficulty, 'Medium')
         self.diff_combo.setCurrentText(mapped_difficulty)
         
         self.diff_combo.setMinimumHeight(44)
@@ -136,7 +136,7 @@ class EditFlashcardDialog(QDialog):
         button_layout.setSpacing(12)
         
         # Annulla
-        cancel_btn = QPushButton("Annulla")
+        cancel_btn = QPushButton("Cancel")
         cancel_btn.setProperty("class", "secondary")
         cancel_btn.setMinimumHeight(44)
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -144,7 +144,7 @@ class EditFlashcardDialog(QDialog):
         button_layout.addWidget(cancel_btn)
         
         # Salva con icona
-        save_btn = QPushButton(" Salva Modifiche")
+        save_btn = QPushButton(" Save Changes")
         save_btn.setIcon(IconProvider.get_icon('save', 18, '#FFFFFF'))
         save_btn.setProperty("class", "primary")
         save_btn.setMinimumHeight(44)
@@ -162,20 +162,20 @@ class EditFlashcardDialog(QDialog):
         if not front or not back:
             QMessageBox.warning(
                 self, 
-                "Campi Obbligatori", 
-                "Domanda e risposta non possono essere vuote"
+                "Required Fields", 
+                "Question and answer cannot be empty"
             )
             return
         
-        # Mappa la difficoltà in italiano -> inglese per il database
+        # Map difficulty English -> English (lowercase) for database
         difficulty_reverse_map = {
-            'facile': 'easy',
-            'medio': 'medium',
-            'difficile': 'hard'
+            'Easy': 'easy',
+            'Medium': 'medium',
+            'Hard': 'hard'
         }
         
-        difficulty_it = self.diff_combo.currentText()
-        difficulty = difficulty_reverse_map.get(difficulty_it, 'medium')
+        difficulty_display = self.diff_combo.currentText()
+        difficulty = difficulty_reverse_map.get(difficulty_display, 'medium')
         
         try:
             self.db.update_flashcard(
@@ -187,16 +187,16 @@ class EditFlashcardDialog(QDialog):
             
             QMessageBox.information(
                 self, 
-                "Successo", 
-                "Flashcard aggiornata con successo!"
+                "Success", 
+                "Flashcard updated successfully!"
             )
             self.accept()
             
         except Exception as e:
             QMessageBox.critical(
                 self, 
-                "Errore", 
-                f"Errore nell'aggiornamento della flashcard:\n{str(e)}"
+                "Error", 
+                f"Error updating flashcard:\n{str(e)}"
             )
     
     def center_on_screen(self):
