@@ -89,7 +89,8 @@ The flashcard generation process follows three distinct phases, orchestrated by 
 The LLM is instructed to act as an expert in metacognition. The prompt imposes "atomic" rules based on Andy Matuschak's principles, requiring structured JSON output.
 
 \begin{lstlisting}[language=Python, caption=Prompt for draft generation]
-prompt = f"""You are an expert in learning and metacognition...
+prompt = f"""
+You are an expert in learning and metacognition...
 Follow these 5 ABSOLUTE RULES:
 1. Focused: The question must address ONLY ONE concept.
 2. Precise: It must not be ambiguous.
@@ -97,20 +98,35 @@ Follow these 5 ABSOLUTE RULES:
 4. Ask "Why": Prefer questions about implications.
 5. Cognitive Effort: The answer must NOT be intuitive from the question.
 
-Return the response in JSON format..."""
+Return the response in JSON format with this exact structure:
+{{
+'front': 'Atomic, precise question requiring effort on {topic}',
+'back': 'Concise and accurate response based on context'
+}}
+
+Do not invent information that is not present in the context. If the context does not mention '{topic}', return:
+{{
+'front': 'Information not available',
+'back': 'The context provided does not contain relevant information about {topic}'
+}}
+"""
 \end{lstlisting}
+
+Even if not highlighted in a separate section, this example shows how the prompt also used \textbf{Few-Shot} examples to guide the model towards a well-formatted JSON file.
 
 \subsection{2. Critique (Critical Analysis)}
 In this phase, the system assumes an "adversarial" role. A second prompt asks the LLM to evaluate the newly generated draft. This is not a simple review, but a validation against specific criteria.
 
 \begin{lstlisting}[language=Python, caption=Prompt for critique]
-prompt = f"""You are an expert critic...
+prompt = f"""
+You are an expert critic...
 Evaluate the flashcard EXCLUSIVELY according to these 5 RULES:
 1. Focused: Does it ask for a single concept? Or is it too broad?
 2. Precise: Is it ambiguous?
 3. Context: Is the answer correct and based ONLY on the context?
 ...
-Provide CONSTRUCTIVE criticism in 2-3 sentences."""
+Provide CONSTRUCTIVE criticism in 2-3 sentences.
+"""
 \end{lstlisting}
 
 \subsection{3. Refine (Refinement)}
