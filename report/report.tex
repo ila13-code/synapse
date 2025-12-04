@@ -48,20 +48,20 @@
 \maketitle
 
 \begin{abstract}
-This document provides an in-depth technical analysis of \textit{Synapse}, an intelligent system designed to support university studies through the automatic generation of educational material. The report explores the system architecture, focusing on the integration of \textbf{Retrieval-Augmented Generation (RAG)} technologies, \textbf{Neurosymbolic} methodologies (Reflection Pattern), integration with web search services, and advanced export functionalities.
+\textit{Synapse} is an LLM-based system designed to support university studies through the automatic generation of educational material. This report explores the system architecture, focusing on the integration of agentic design patterns such as \textbf{Retrieval-Augmented Generation}, \textbf{Reflection}; integration with web search services, and advanced export functionalities.
 \end{abstract}
 
 \tableofcontents
 \newpage
 
 \section{Introduction}
-The evolution of Large Language Models (LLMs) has opened new possibilities in the field of assisted education. However, the "naive" use of these models presents significant limitations: hallucinations, superficiality in responses, and a lack of adherence to specific study materials.
-
-\textit{Synapse} was created to solve these problems through a hybrid architecture that combines:
+The evolution of Large Language Models (LLMs) has opened new possibilities in the field of assisted education. However, the "naive" use of these models presents significant limitations: hallucinations, superficiality in responses, and a lack of adherence to specific study materials.\\
+We created \textit{Synapse} to solve these problems through an architecture that combines:
 \begin{itemize}
-    \item \textbf{Neural Component:} The generative capacity and natural language understanding of LLMs (Gemini, Ollama).
-    \item \textbf{Symbolic Component:} Logical rules, structural constraints, and deterministic control flows that guide the AI.
-    \item \textbf{Knowledge Retrieval:} A RAG system to anchor responses to verified documents.
+    \item \textbf{RAG (Retrieval-Augmented Generation):} To ground LLM responses in user-provided documents.
+    \item \textbf{Neurosymbolic AI (Reflection Pattern):} To ensure the quality and correctness of generated flashcards through a draft-critique-refine cycle.
+    \item \textbf{Web Search Integration:} To supplement local knowledge with up-to-date information from the web.
+    \item \textbf{Export Capabilities:} To produce interoperable study materials compatible with popular tools like Anki.
 \end{itemize}
 
 \section{System Architecture}
