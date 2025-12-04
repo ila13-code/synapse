@@ -276,7 +276,7 @@ class RAGService:
         return collection_name
 
     # ------------------ Chunking ------------------
-    def chunk_text_recursive_test(self, text: str, chunk_size: int = None, chunk_overlap: int = None) -> List[str]:
+    def chunk_text_recursive(self, text: str, chunk_size: int = None, chunk_overlap: int = None) -> List[str]:
         final_chunk_size = chunk_size if chunk_size is not None else self.chunk_size
         final_overlap = chunk_overlap if chunk_overlap is not None else self.chunk_overlap
 
@@ -339,6 +339,7 @@ class RAGService:
         unique_chunks = list(dict.fromkeys(final_chunks))
         return [chunk for chunk in unique_chunks if chunk]
 
+    """
     def chunk_text(self, text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
         if chunk_size is None:
             chunk_size = self.chunk_size
@@ -377,10 +378,11 @@ class RAGService:
             chunks.append(current.strip())
 
         return chunks
+    """
 
     def index_document(self, collection_name: str, document_id: int,
                        document_name: str, content: str) -> None:
-        chunks = self.chunk_text(content)
+        chunks = self.chunk_text_recursive(content)
         if not chunks:
             return
 
