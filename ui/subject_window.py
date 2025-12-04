@@ -51,15 +51,15 @@ class DocumentUploadThread(QThread):
             # 1) Salva il documento (OK farlo qui se FileService è thread-safe)
             doc_id = self.file_service.save_document(self.file_path, self.subject_id)
             if not doc_id:
-                self.finished.emit(False, "Errore durante il caricamento del documento")
+                self.finished.emit(False, "Error loading document")
                 return
 
-            # 2) Usa un DatabaseManager NUOVO dentro il thread (fix per SQLite)
+            # 2) Use a NEW DatabaseManager inside the thread (SQLite fix)
             try:
                 from database.db_manager import DatabaseManager
-                db = DatabaseManager()  # connessione legata a questo thread
+                db = DatabaseManager()  # connection bound to this thread
             except Exception as e:
-                self.finished.emit(False, f"Errore inizializzazione DB nel thread: {e}")
+                self.finished.emit(False, f"Error initializing DB in thread: {e}")
                 return
 
                         # 3) Indicizzazione RAG (non bloccare l'upload se fallisce)
@@ -74,11 +74,11 @@ class DocumentUploadThread(QThread):
                         doc['content']
                     )
             except Exception as e:
-                # Logga ma non fallire l'upload
-                print(f"Errore indicizzazione RAG: {e}")
+                # Log but don't fail the upload
+                print(f"RAG indexing error: {e}")
 
-            # 4) Fine OK
-            self.finished.emit(True, "Documento caricato e indicizzato con successo!")
+            # 4) Success
+            self.finished.emit(True, "Document uploaded and indexed successfully!")
         
         except Exception as e:
             self.finished.emit(False, f"Errore: {str(e)}")
@@ -197,12 +197,12 @@ class GenerationThread(QThread):
             traceback.print_exc() # Stampa già il traceback
             print("======================================================")
             
-            # EMETTI SEGNALE DI ERRORE per mostrarlo nella UI
-            self.error.emit("Errore durante la generazione", str(e))
+            # EMIT ERROR SIGNAL to show in UI
+            self.error.emit("Error during generation", str(e))
     
     def _generate_traditional(self):
-        """Generazione tradizionale (Context Stuffing) - metodo attuale"""
-        self.progress.emit(10, "Combinando documenti...")
+        """Traditional generation (Context Stuffing) - current method"""
+        self.progress.emit(10, "Combining documents...")
         
         # Combina tutto il contenuto
         all_content = []
@@ -215,19 +215,19 @@ class GenerationThread(QThread):
         # Se la ricerca web è abilitata, arricchisci il contesto
         if self.use_web_search and self.web_search_service:
             search_query = self.user_query or self.subject_name
-            self.progress.emit(55, f"Ricerca web: {search_query[:50]}...")
-            print(f"[WEB] Avvio ricerca web (tradizionale) con query: '{search_query}'")
+            self.progress.emit(55, f"Web search: {search_query[:50]}...")
+            print(f"[WEB] Starting web search (traditional) with query: '{search_query}'")
             try:
                 web_block = self.web_search_service.enrich_context_block(search_query, max_results=4)
             except Exception:
                 web_block = ""
             if web_block:
                 combined_content += f"\n\n{web_block}\n"
-                print("[WEB] Ricerca web completata (tradizionale) e integrata nel contesto")
+                print("[WEB] Web search completed (traditional) and integrated into context")
             else:
-                print("[WEB] Nessun risultato web (tradizionale) o errore durante la ricerca")
+                print("[WEB] No web results (traditional) or error during search")
         
-        self.progress.emit(50, "Generando flashcard...")
+        self.progress.emit(50, "Generating flashcards...")
         
         # Genera con il metodo tradizionale
         flashcards = self.ai_service.generate_flashcards(
@@ -236,7 +236,7 @@ class GenerationThread(QThread):
             self.use_web_search
         )
         
-        self.progress.emit(100, "Completato!")
+        self.progress.emit(100, "Completed!")
         return flashcards
     
     def _generate_with_rag(self):
@@ -244,17 +244,17 @@ class GenerationThread(QThread):
             print("[DEBUG] 1. Avvio _generate_with_rag.")
             flashcards = []
             
-            # Step 1: Crea/Ottieni collection
-            self.progress.emit(5, "Inizializzando vector database...")
-            print("[DEBUG] 2. Creazione collection...")
+            # Step 1: Create/Get collection
+            self.progress.emit(5, "Initializing vector database...")
+            print("[DEBUG] 2. Creating collection...")
             collection_name = self.rag_service.create_collection(
                 self.subject_id, 
                 self.subject_name
             )
             
-            # Step 2: Indicizza SOLO i documenti non ancora presenti in Qdrant
-            self.progress.emit(10, "Verifica indicizzazione documenti...")
-            print("[DEBUG] 3. Verifica/indicizzazione RAG...")
+            # Step 2: Index ONLY documents not yet present in Qdrant
+            self.progress.emit(10, "Checking document indexing...")
+            print("[DEBUG] 3. Checking/indexing RAG...")
             for i, doc in enumerate(self.documents):
                 if not doc.get('content'):
                     continue
@@ -264,9 +264,9 @@ class GenerationThread(QThread):
                     already = False
                 if already:
                     progress_pct = 10 + (i + 1) * 5 // max(1, len(self.documents))
-                    self.progress.emit(progress_pct, f"Già indicizzato: {doc['name']}")
+                    self.progress.emit(progress_pct, f"Already indexed: {doc['name']}")
                     continue
-                # Indicizza documento non presente
+                # Index document not present
                 self.rag_service.index_document(
                     collection_name,
                     doc['id'],
@@ -274,13 +274,13 @@ class GenerationThread(QThread):
                     doc['content']
                 )
                 progress_pct = 10 + (i + 1) * 10 // max(1, len(self.documents))
-                self.progress.emit(progress_pct, f"Indicizzato: {doc['name']}")
-            print("[DEBUG] 3. Verifica/indicizzazione RAG completata.")
+                self.progress.emit(progress_pct, f"Indexed: {doc['name']}")
+            print("[DEBUG] 3. RAG checking/indexing completed.")
 
             
-            # Step 3: Usa SEMPRE i chunk salvati in Qdrant per l'analisi dei topic
-            print("[DEBUG] 4. Lettura chunks dalla collection...")
-            self.progress.emit(25, "Recupero contenuti indicizzati...")
+            # Step 3: ALWAYS use chunks saved in Qdrant for topic analysis
+            print("[DEBUG] 4. Reading chunks from collection...")
+            self.progress.emit(25, "Retrieving indexed content...")
             all_chunks = self.rag_service.get_all_chunks_texts(collection_name)
             if not all_chunks:
                 # Fallback (non dovrebbe succedere): ricava dai documenti in memoria
@@ -289,49 +289,49 @@ class GenerationThread(QThread):
                     if doc.get('content'):
                         all_chunks.extend(self.rag_service.chunk_text(doc['content']))
             
-            # Step 4: Estrai topic principali
-            print("[DEBUG] 5. Estrazione topics...")
+            # Step 4: Extract main topics
+            print("[DEBUG] 5. Extracting topics...")
             
-            # Se l'utente ha fornito una query, usala per focalizzare i topic
+            # If user provided a query, use it to focus topics
             if self.user_query and self.user_query.strip():
                 user_q = self.user_query.strip()
-                self.progress.emit(30, f"Ricerca contenuti per: {user_q}")
-                print(f"[DEBUG] Usando query utente: {user_q}")
+                self.progress.emit(30, f"Searching content for: {user_q}")
+                print(f"[DEBUG] Using user query: {user_q}")
 
-                # IMPORTANTE: Se l'utente fa una domanda specifica, 
-                # i topic devono essere estratti DALLA DOMANDA, non dai documenti!
-                # I documenti servono solo come contesto per rispondere.
+                # IMPORTANT: If user asks a specific question, 
+                # topics must be extracted FROM THE QUESTION, not from documents!
+                # Documents only serve as context to answer.
                 
-                print(f"[DEBUG] Estrazione topic DALLA QUERY utente (non dai documenti)")
+                print(f"[DEBUG] Extracting topics FROM USER QUERY (not from documents)")
                 topics = self.reflection_service.extract_topics([user_q], self.num_cards)
                 if not topics:
                     topics = [user_q]
-                self.progress.emit(35, f"Identificati {len(topics)} argomenti dalla query utente")
+                self.progress.emit(35, f"Identified {len(topics)} topics from user query")
             else:
-                # Altrimenti estrai automaticamente i topic
+                # Otherwise extract topics automatically
                 topics = self.reflection_service.extract_topics(all_chunks, self.num_cards)
-                self.progress.emit(35, f"Identificati {len(topics)} argomenti")
+                self.progress.emit(35, f"Identified {len(topics)} topics")
 
             # Limita i topic al numero richiesto
             topics = topics[:self.num_cards]
             
-            # Step 5: Per ogni topic, genera flashcard con RAG + Reflection
-            print("[DEBUG] 6. Inizio generazione per topic...")
+            # Step 5: For each topic, generate flashcard with RAG + Reflection
+            print("[DEBUG] 6. Starting generation per topic...")
             for i, topic in enumerate(topics):
                 try:
                     base_progress = 35 + (i * 65 // len(topics))
                     
-                    self.progress.emit(base_progress, f"Analizzando: {topic}")
+                    self.progress.emit(base_progress, f"Analyzing: {topic}")
                     
-                    # IMPORTANTE: Se c'è una query utente, combina topic + query per la ricerca
-                    # Questo evita di trovare chunks irrilevanti che matchano solo parole generiche
+                    # IMPORTANT: If there's a user query, combine topic + query for search
+                    # This avoids finding irrelevant chunks that only match generic words
                     if self.user_query and self.user_query.strip():
-                        # Cerca usando "topic NEL CONTESTO DELLA query utente"
-                        search_query = f"{topic} (nel contesto di: {self.user_query.strip()})"
-                        print(f"[RAG-DEBUG] Cerco chunks per topic '{topic}' nel contesto della query utente")
+                        # Search using "topic IN THE CONTEXT OF user query"
+                        search_query = f"{topic} (in the context of: {self.user_query.strip()})"
+                        print(f"[RAG-DEBUG] Searching chunks for topic '{topic}' in user query context")
                     else:
                         search_query = topic
-                        print(f"[RAG-DEBUG] Cerco chunks per topic: '{topic}'")
+                        print(f"[RAG-DEBUG] Searching chunks for topic: '{topic}'")
                     
                     relevant_chunks = self.rag_service.search_relevant_chunks(
                         collection_name, 
@@ -365,7 +365,7 @@ class GenerationThread(QThread):
                     if self.use_reflection:
                         self.progress.emit(
                             base_progress + 5, 
-                            f"Generando con Reflection: {topic}"
+                            f"Generating with Reflection: {topic}"
                         )
                         flashcard = self.reflection_service.generate_flashcard_with_reflection(
                             context, 
@@ -385,21 +385,21 @@ class GenerationThread(QThread):
                         break
                     
                 except Exception as e_topic:
-                    # Non bloccare tutto se un solo topic fallisce
-                    print(f"Errore generando flashcard per '{topic}': {e_topic}")
+                    # Don't block everything if a single topic fails
+                    print(f"Error generating flashcard for '{topic}': {e_topic}")
                     continue
             
-            print("[DEBUG] 7. Generazione _generate_with_rag completata.")
-            self.progress.emit(100, "Generazione completata!")
+            print("[DEBUG] 7. _generate_with_rag generation completed.")
+            self.progress.emit(100, "Generation completed!")
             return flashcards
 
         except ConnectionError as e:
             print("======================================================")
             print(f"ERRORE CONNESSIONE in '_generate_with_rag': {e}")
             print("======================================================")
-            # Messaggio utente più chiaro
+            # Clearer user message
             self.error.emit(
-                "Servizio di embedding non disponibile",
+                "Embedding service not available",
                 str(e)
             )
             return []
@@ -968,7 +968,7 @@ class SubjectWindow(QMainWindow):
         
         documents = self.db.get_documents_by_subject(self.subject_data['id'])
         
-        self.docs_header.setText(f"Documenti Caricati ({len(documents)})")
+        self.docs_header.setText(f"Uploaded Documents ({len(documents)})")
         
         if not documents:
             empty_label = QLabel("No documents uploaded yet")
@@ -1025,14 +1025,14 @@ class SubjectWindow(QMainWindow):
                     if p and os.path.isfile(p) and p.lower().endswith((".pdf", ".txt")):
                         files.append(p)
             if not files:
-                QMessageBox.warning(self, "File non validi", "Sono supportati solo file PDF e TXT")
+                QMessageBox.warning(self, "Invalid Files", "Only PDF and TXT files are supported")
                 event.ignore()
                 return
             event.acceptProposedAction()
             for fp in files:
                 self._process_uploaded_file(fp)
         except Exception as e:
-            QMessageBox.critical(self, "Errore", f"Errore durante il drop dei file: {e}")
+            QMessageBox.critical(self, "Error", f"Error dropping files: {e}")
             event.ignore()
     
     def _process_uploaded_file(self, file_path):
@@ -1083,10 +1083,10 @@ class SubjectWindow(QMainWindow):
             self.load_documents()
             self.update_doc_count()
         else:
-            # Mostra errore
+            # Show error
             QMessageBox.warning(
                 self, 
-                "Errore", 
+                "Error", 
                 message
             )
     
@@ -1127,8 +1127,8 @@ class SubjectWindow(QMainWindow):
                 )
                 self.rag_service.remove_document(collection_name, doc_id)
             except Exception as e:
-                print(f"Errore rimozione da RAG: {e}")
-                # Continua comunque con l'eliminazione dal DB
+                print(f"Error removing from RAG: {e}")
+                # Continue anyway with DB deletion
             
             try:
                 # Rimuovi solo dal database, NON dal disco (delete_physical_file=False)
@@ -1155,7 +1155,7 @@ class SubjectWindow(QMainWindow):
         """Aggiorna il contatore dei documenti"""
         documents = self.db.get_documents_by_subject(self.subject_data['id'])
         count = len(documents)
-        self.doc_count_label.setText(f"Documenti disponibili: {count}")
+        self.doc_count_label.setText(f"Available documents: {count}")
     
     # ==================== GENERAZIONE FLASHCARD ====================
     
@@ -1296,7 +1296,7 @@ class SubjectWindow(QMainWindow):
             if progress_dialog and message:
                 progress_dialog.setLabelText(str(message))
         except Exception as e:
-            print(f"Errore nell'aggiornamento del progresso: {e}")
+            print(f"Error updating progress: {e}")
     
     def on_generation_complete(self, flashcards, progress):
         """Chiamata quando la generazione è completata"""
@@ -1379,7 +1379,7 @@ class SubjectWindow(QMainWindow):
             # Mostra difficoltà
             difficulty = card.get('difficulty', 'medium')
             
-            # Mappa da inglese/italiano a inglese (per retrocompatibilità)
+            # Map from English/Italian to English (for backward compatibility)
             difficulty_normalize = {
                 'facile': 'easy',
                 'easy': 'easy',
@@ -1390,18 +1390,18 @@ class SubjectWindow(QMainWindow):
             }
             difficulty_en = difficulty_normalize.get(difficulty.lower(), 'medium')
             
-            # Mappa per visualizzazione in italiano
+            # Map for English display
             difficulty_display = {
                 'easy': 'Easy',
                 'medium': 'Medium',
                 'hard': 'Hard'
             }
             
-            # Recupera i colori del tema
+            # Get theme colors
             _, difficulty_colors = get_theme_colors()
             color = difficulty_colors.get(difficulty_en, difficulty_colors['medium'])
             
-            self.difficulty_label.setText(difficulty_display.get(difficulty_en, 'Medio'))
+            self.difficulty_label.setText(difficulty_display.get(difficulty_en, 'Medium'))
             # Usa get_color_with_opacity()
             self.difficulty_label.setStyleSheet(f"""
                 font-size: 14px;
@@ -1570,19 +1570,19 @@ class SubjectWindow(QMainWindow):
         old_docs_tab = self.tabs.widget(0)
         self.documents_tab = self.create_documents_tab()
         self.tabs.removeTab(0)
-        self.tabs.insertTab(0, self.documents_tab, documents_icon, "Documenti")
+        self.tabs.insertTab(0, self.documents_tab, documents_icon, "Documents")
         old_docs_tab.deleteLater()
         
         old_gen_tab = self.tabs.widget(1)
         self.generate_tab = self.create_generate_tab()
         self.tabs.removeTab(1)
-        self.tabs.insertTab(1, self.generate_tab, generate_icon, "Genera")
+        self.tabs.insertTab(1, self.generate_tab, generate_icon, "Generate")
         old_gen_tab.deleteLater()
         
         old_flash_tab = self.tabs.widget(2)
         self.flashcards_tab = self.create_flashcards_tab()
         self.tabs.removeTab(2)
-        self.tabs.insertTab(2, self.flashcards_tab, flashcards_icon, "Flashcard")
+        self.tabs.insertTab(2, self.flashcards_tab, flashcards_icon, "Flashcards")
         old_flash_tab.deleteLater()
         
         self.tabs.setCurrentIndex(current_tab)
@@ -1607,7 +1607,7 @@ class SubjectWindow(QMainWindow):
         options = QFileDialog.Options()
         file_path, selected_filter = QFileDialog.getSaveFileName(
             self,
-            "Esporta Flashcard",
+            "Export Flashcards",
             f"{self.subject_data['name']}_flashcards",
             "CSV (*.csv);;TSV (*.tsv);;APKG (*.apkg)",
             options=options
@@ -1636,12 +1636,12 @@ class SubjectWindow(QMainWindow):
             
             QMessageBox.information(
                 self,
-                "Successo",
-                "Flashcard esportate con successo!"
+                "Success",
+                "Flashcards exported successfully!"
             )
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Errore",
-                f"Errore durante l'esportazione: {str(e)}"
+                "Error",
+                f"Error during export: {str(e)}"
             )
