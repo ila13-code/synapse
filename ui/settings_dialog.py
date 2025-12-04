@@ -161,7 +161,7 @@ class SettingsDialog(QDialog):
         mode_layout.addWidget(mode_label)
         
         self.mode_toggle = ToggleSwitch()
-        self.mode_toggle.setChecked(self.power_user_mode)  # Set saved state
+        self.mode_toggle.setChecked(self.power_user_mode, animate=False)  # Set saved state
         self.mode_toggle.toggled.connect(self.toggle_power_user_mode)
         mode_layout.addWidget(self.mode_toggle)
         
@@ -676,13 +676,13 @@ class SettingsDialog(QDialog):
         
         # Load Power User settings
         use_rag = get_env_bool('USE_RAG', True)
-        self.rag_toggle.setChecked(use_rag)
+        self.rag_toggle.setChecked(use_rag, animate=False)
         
         use_reflection = get_env_bool('USE_REFLECTION', True)
-        self.reflection_toggle.setChecked(use_reflection)
+        self.reflection_toggle.setChecked(use_reflection, animate=False)
         
         use_local_llm = get_env_bool('USE_LOCAL_LLM', False)
-        self.local_llm_toggle.setChecked(use_local_llm)
+        self.local_llm_toggle.setChecked(use_local_llm, animate=False)
         # Show or hide Local LLM settings based on state
         try:
             self.local_llm_settings_widget.setVisible(use_local_llm)
