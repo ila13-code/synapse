@@ -543,7 +543,13 @@ class SettingsDialog(QDialog):
         self._save_env_variable('TAVILY_API_KEY', api_key)
     
     def _save_env_variable(self, key: str, value: str):
-        """Save an environment variable to .env file"""
+        """Save an environment variable to .env file and update current environment"""
+        # Update current environment
+        if value:
+            os.environ[key] = value
+        elif key in os.environ:
+            del os.environ[key]
+
         try:
             env_path = '.env'
             
