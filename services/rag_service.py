@@ -1,8 +1,3 @@
-# rag_service.py
-"""
-Servizio RAG (Retrieval-Augmented Generation) con Qdrant e embedding dinamici
-(Ollama oppure Gemini) scelti via .env
-"""
 from __future__ import annotations
 
 import os
@@ -17,9 +12,6 @@ from qdrant_client.models import (Distance, FieldCondition, Filter, MatchValue,
                                   PointStruct, VectorParams)
 
 
-# ==========================
-#   EMBEDDING FUNCTIONS
-# ==========================
 class OllamaEmbeddingFunction:
     def __init__(self, base_url: str = "http://127.0.0.1:11434/v1",
                  model: str = "nomic-embed-text:latest",
@@ -31,7 +23,6 @@ class OllamaEmbeddingFunction:
             self._headers["Authorization"] = f"Bearer {api_key}"
 
     def embed(self, texts: List[str]) -> List[List[float]]:
-        """Embedding per una lista di testi"""
         if not texts:
             return []
         if isinstance(texts, str):
@@ -76,7 +67,6 @@ class GeminiEmbeddingFunction:
             self.model_name = model
 
     def embed(self, texts: List[str]) -> List[List[float]]:
-        """Embedding per una lista di testi"""
         if not texts:
             return []
         
@@ -85,7 +75,6 @@ class GeminiEmbeddingFunction:
 
         print(f"[DEBUG] Embedding {len(texts)} testi con Gemini...")
         
-        # Filtra stringhe vuote
         valid_texts_map = {}
         for i, text in enumerate(texts):
             if text and text.strip():
@@ -186,22 +175,12 @@ class GeminiEmbeddingFunction:
         return final_embeddings
 
 
-# ==========================
-#        RAG SERVICE
-# ==========================
-
 
 class RAGService:
-    """Servizio per implementare RAG con Qdrant.
-    
-    Implementa il pattern Singleton per evitare accessi concorrenti al database Qdrant.
-    """
-    
     _instance = None
     _lock = None
     
     def __new__(cls, persist_directory: str = "./qdrant_db"):
-        """Singleton pattern: ritorna sempre la stessa istanza"""
         if cls._instance is None:
             print("[RAG] Creazione nuova istanza singleton di RAGService")
             cls._instance = super(RAGService, cls).__new__(cls)
@@ -209,11 +188,6 @@ class RAGService:
         return cls._instance
 
     def __init__(self, persist_directory: str = "./qdrant_db"):
-        """
-        Args:
-            persist_directory: Directory dove salvare il database Qdrant
-        """
-        # Evita reinizializzazione se l'istanza è già stata inizializzata
         if self._initialized:
             return
             
@@ -221,19 +195,15 @@ class RAGService:
         self.persist_directory = persist_directory
         Path(persist_directory).mkdir(parents=True, exist_ok=True)
         
-        # Client Qdrant in modalità embedded (salva su disco)
         self.client = QdrantClient(path=persist_directory)
         self._initialized = True
         
-        # Configurazione embedding
         self.use_local_llm = os.getenv("USE_LOCAL_LLM", "true").lower() == "true"
         
-        # Configurazione chunking da .env
         self.chunk_size = int(os.getenv("RAG_CHUNK_SIZE", "800"))
         self.chunk_overlap = int(os.getenv("RAG_CHUNK_OVERLAP", "100"))
         self.chunks_per_topic = int(os.getenv("RAG_CHUNKS_PER_TOPIC", "15"))
-        # Soglia di similarità minima per considerare un risultato rilevante
-        # Valori tipici 0.2-0.4 con COSINE; più alto = più stringente
+        
         try:
             self.score_threshold = float(os.getenv("RAG_SCORE_THRESHOLD", "0.25"))
         except Exception:
@@ -253,11 +223,9 @@ class RAGService:
         
         self.embedder = self._create_embedding_function()
         
-        # Determina la dimensione degli embedding
         self._embedding_dim = None
 
     def _create_embedding_function(self):
-        """Crea l'embedder in base alle variabili d'ambiente."""
         if self.use_local_llm:
             print(f"[RAG] Provider: Ollama ({self.local_model})")
             return OllamaEmbeddingFunction(base_url=self.local_base_url, model=self.local_model)
@@ -268,7 +236,6 @@ class RAGService:
             return GeminiEmbeddingFunction(api_key=self.gemini_api_key, model=self.gemini_embed_model)
 
     def _get_embedding_dim(self) -> int:
-        """Determina la dimensione degli embedding"""
         if self._embedding_dim is None:
             try:
                 test_emb = self.embedder.embed(["test"])
@@ -286,20 +253,16 @@ class RAGService:
         return self._embedding_dim
 
     def _collection_name(self, subject_id: int, subject_name: str) -> str:
-        """Nome standardizzato per la collection"""
         return f"subject_{subject_id}_{subject_name.lower().replace(' ', '_').replace('-', '_')}"
 
     def create_collection(self, subject_id: int, subject_name: str) -> str:
-        """Crea/ottiene la collection per una materia"""
         collection_name = self._collection_name(subject_id, subject_name)
         
-        # Verifica se la collection esiste già
         collections = self.client.get_collections().collections
         collection_exists = any(col.name == collection_name for col in collections)
         
         if not collection_exists:
             print(f"[RAG] Creazione nuova collection: {collection_name}")
-            # Crea collection con la dimensione corretta
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
@@ -313,40 +276,20 @@ class RAGService:
         return collection_name
 
     # ------------------ Chunking ------------------
-    # Sostituisci la tua vecchia funzione 'chunk_text' con questa
-
     def chunk_text_recursive_test(self, text: str, chunk_size: int = None, chunk_overlap: int = None) -> List[str]:
-        """
-        Divide il testo in chunk usando una strategia ricorsiva.
-        
-        Args:
-            text: Il testo da dividere.
-            chunk_size: La dimensione massima desiderata per chunk (usa il default del servizio se None).
-            chunk_overlap: La sovrapposizione desiderata (usa il default del servizio se None).
-        
-        Returns:
-            Una lista di chunk di testo.
-        """
-        
-        # Usa i valori di default configurati nel servizio se non forniti
         final_chunk_size = chunk_size if chunk_size is not None else self.chunk_size
         final_overlap = chunk_overlap if chunk_overlap is not None else self.chunk_overlap
 
-        # Gerarchia dei separatori: dal più grande (logico) al più piccolo (brutale)
         separators = ["\n\n", "\n", ". ", " ", ""]
         
-        # Inizia con il testo intero
         final_chunks = []
         
-        # Funzione helper ricorsiva
         def _recursive_split(text: str, current_separators: List[str]):
-            # Se il testo è già abbastanza piccolo, è un chunk
             if len(text) <= final_chunk_size:
-                if text.strip(): # Assicurati che non sia solo spazio bianco
+                if text.strip():
                     final_chunks.append(text.strip())
                 return
 
-            # Se abbiamo finito i separatori, dividiamo brutalmente
             if not current_separators:
                 for i in range(0, len(text), final_chunk_size - final_overlap):
                     chunk = text[i : i + final_chunk_size]
@@ -354,64 +297,49 @@ class RAGService:
                         final_chunks.append(chunk.strip())
                 return
 
-            # Prendi il separatore corrente (il migliore)
             separator = current_separators[0]
             remaining_separators = current_separators[1:]
 
-            # Cerca di dividere il testo con questo separatore
-            # Usiamo un trucco per mantenere il separatore (utile per \n\n)
             if separator == "":
-                splits = list(text) # Dividi per carattere
+                splits = list(text) 
             else:
                 splits = text.split(separator)
 
             current_chunk = ""
             for i, part in enumerate(splits):
-                # Ricostruisci il testo con il separatore (tranne per l'ultimo pezzo)
                 if i < len(splits) - 1:
                     part_with_separator = part + separator
                 else:
                     part_with_separator = part
                 
-                # Se l'aggiunta di questa parte supera il limite...
                 if len(current_chunk) + len(part_with_separator) > final_chunk_size:
                     
-                    # Se il current_chunk non è vuoto, è un pezzo valido
                     if current_chunk:
-                        # ...ma potrebbe essere ancora troppo grande, quindi RILANCIA la ricorsione
                         _recursive_split(current_chunk.strip(), remaining_separators)
                     
-                    # Inizia un nuovo chunk, applicando l'overlap
-                    # Prendi l'ultima parte del chunk precedente come overlap
                     overlap_text = current_chunk[-final_overlap:]
                     
-                    # Se la parte stessa è più grande del chunk_size, lanciala da sola
                     if len(part_with_separator) > final_chunk_size:
-                         _recursive_split(part_with_separator.strip(), remaining_separators)
-                         current_chunk = "" # Resetta
+                        _recursive_split(part_with_separator.strip(), remaining_separators)
+                        current_chunk = "" 
                     else:
                         current_chunk = overlap_text + part_with_separator
                 
                 else:
                     current_chunk += part_with_separator
             
-            # Non dimenticare l'ultimo chunk rimasto
             if current_chunk.strip():
                 if len(current_chunk) > final_chunk_size:
                     _recursive_split(current_chunk.strip(), remaining_separators)
                 else:
                     final_chunks.append(current_chunk.strip())
 
-        # Avvia il processo
         _recursive_split(text, separators)
         
-        # Filtra eventuali duplicati o chunk vuoti
         unique_chunks = list(dict.fromkeys(final_chunks))
         return [chunk for chunk in unique_chunks if chunk]
 
     def chunk_text(self, text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
-        """Divide il testo in chunk con overlap"""
-        # Usa i valori configurati se non specificati
         if chunk_size is None:
             chunk_size = self.chunk_size
         if overlap is None:
@@ -450,25 +378,20 @@ class RAGService:
 
         return chunks
 
-    # ------------------ Indexing ------------------
-
     def index_document(self, collection_name: str, document_id: int,
                        document_name: str, content: str) -> None:
-        """Indicizza un documento nella collection"""
         chunks = self.chunk_text(content)
         if not chunks:
             return
 
         print(f"[RAG] Indicizzazione documento {document_name}: {len(chunks)} chunks")
         
-        # Genera embeddings
         embeddings = self.embedder.embed(chunks)
         
         if not embeddings:
             print("[RAG] Nessun embedding generato!")
             return
         
-        # Prepara i punti per Qdrant
         points = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             point_id = str(uuid.uuid4())  # ID univoco
@@ -486,7 +409,6 @@ class RAGService:
                 )
             )
         
-        # Inserisci in Qdrant
         self.client.upsert(
             collection_name=collection_name,
             points=points
@@ -495,8 +417,6 @@ class RAGService:
         print(f"[RAG] Indicizzazione completata. {len(chunks)} chunks aggiunti.")
 
     def remove_document(self, collection_name: str, document_id: int) -> None:
-        """Rimuove tutti i chunk di un documento dalla collection"""
-        # Elimina tutti i punti con questo document_id
         self.client.delete(
             collection_name=collection_name,
             points_selector=Filter(
@@ -511,10 +431,7 @@ class RAGService:
         
         print(f"[RAG] Rimossi tutti i chunk del documento {document_id}")
 
-    # ------------------ Query ------------------
-
     def is_document_indexed(self, collection_name: str, document_id: int) -> bool:
-        """Ritorna True se esistono già punti in Qdrant per questo document_id."""
         try:
             count_res = self.client.count(
                 collection_name=collection_name,
@@ -530,7 +447,6 @@ class RAGService:
             )
             total = getattr(count_res, "count", None)
             if total is None:
-                # Alcune versioni possono restituire un int
                 total = int(count_res) if count_res is not None else 0
             return (total or 0) > 0
         except Exception as e:
@@ -538,7 +454,6 @@ class RAGService:
             return False
 
     def get_all_chunks_texts(self, collection_name: str, batch_size: int = 1000) -> List[str]:
-        """Recupera tutti i testi dei chunk salvati nella collection da Qdrant."""
         texts: List[str] = []
         next_offset = None
         try:
@@ -565,13 +480,10 @@ class RAGService:
 
     def search_relevant_chunks(self, collection_name: str,
                                query: str, n_results: int = 10) -> List[Dict[str, Any]]:
-        """Cerca i chunk più rilevanti per la query"""
-        # Embedding della query
         query_embedding = self.embedder.embed([query])
         if not query_embedding:
             return []
         
-        # Cerca con Qdrant
         results = self.client.search(
             collection_name=collection_name,
             query_vector=query_embedding[0],
@@ -581,7 +493,6 @@ class RAGService:
             with_vectors=False,
         )
         
-        # Formatta i risultati
         formatted = []
         for result in results:
             formatted.append({
@@ -593,15 +504,13 @@ class RAGService:
                     "total_chunks": result.payload.get("total_chunks"),
                 },
                 "score": result.score,
-                "distance": 1 - result.score,  # mantenuto per retrocompatibilità
+                "distance": 1 - result.score, 
             })
         
         return formatted
 
-    # ------------------ Drop collection ------------------
 
     def delete_collection(self, subject_id: int, subject_name: str) -> None:
-        """Elimina la collection della materia"""
         collection_name = self._collection_name(subject_id, subject_name)
         
         try:
@@ -610,20 +519,10 @@ class RAGService:
         except Exception as e:
             print(f"[RAG] Errore eliminazione collection {collection_name}: {e}")
     
-    # ------------------ Cleanup ------------------
-    
     @classmethod
     def close(cls):
-        """Chiude la connessione Qdrant e resetta il singleton.
-        
-        Utile per test o quando si vuole reinizializzare il servizio.
-        NOTA: In produzione NON è necessario chiamare questo metodo,
-        il singleton rimane attivo per tutta la vita dell'applicazione.
-        """
         if cls._instance is not None and hasattr(cls._instance, 'client'):
             try:
-                # Qdrant client non ha un metodo close() esplicito,
-                # ma possiamo forzare la garbage collection
                 cls._instance.client = None
                 print("[RAG] Client Qdrant chiuso")
             except Exception as e:

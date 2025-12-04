@@ -30,12 +30,17 @@ class ToggleSwitch(QWidget):
         self._circle_position = pos
         self.update()
     
-    def setChecked(self, checked):
+    def setChecked(self, checked, animate=True):
         if self._checked != checked:
             self._checked = checked
-            self.animation.setStartValue(self._circle_position)
-            self.animation.setEndValue(1.0 if checked else 0.0)
-            self.animation.start()
+            if animate:
+                self.animation.setStartValue(self._circle_position)
+                self.animation.setEndValue(1.0 if checked else 0.0)
+                self.animation.start()
+            else:
+                self.animation.stop()
+                self._circle_position = 1.0 if checked else 0.0
+                self.update()
     
     def isChecked(self):
         return self._checked
