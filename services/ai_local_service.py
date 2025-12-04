@@ -38,6 +38,16 @@ class LocalLLMService:
         )
         self.model = model or "local-model"  # LM Studio ignora questo se hai un modello caricato
         
+    def check_connection(self) -> bool:
+        """Verifica se il server LLM locale è raggiungibile"""
+        try:
+            # Prova a fare una chiamata leggera (es. lista modelli)
+            self.client.models.list()
+            return True
+        except Exception as e:
+            print(f"Check connection failed: {e}")
+            return False
+        
     def _call_api(self, prompt: str) -> str:
         """Metodo helper per chiamare l'API del LLM locale
         

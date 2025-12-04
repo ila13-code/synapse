@@ -833,6 +833,10 @@ class SubjectWindow(QMainWindow):
             self.web_search_checkbox.setToolTip("Configure TAVILY_API_KEY in settings to enable")
         layout.addWidget(self.web_search_checkbox)
         
+        # Se USE_LOCAL_LLM è attivo, nascondi l'intera opzione di ricerca web
+        if get_env_bool('USE_LOCAL_LLM', False):
+            frame.hide()
+            
         return frame
     
     def create_flashcards_tab(self):
@@ -1205,7 +1209,20 @@ class SubjectWindow(QMainWindow):
                     base_url=base_url,
                     model=model if model else None
                 )
+                
+                # Verifica connessione
+                if not ai_service.check_connection():
+                    progress.close()
+                    QMessageBox.warning(
+                        self,
+                        "Local LLM Not Running",
+                        f"Unable to connect to Local LLM at {base_url}.\n\n"
+                        "Please ensure your local LLM server (e.g., Ollama, LM Studio) is running and accessible."
+                    )
+                    return
+                    
             except Exception as e:
+                progress.close()
                 QMessageBox.warning(
                     self,
                     "Local LLM Error",
