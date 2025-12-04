@@ -17,46 +17,46 @@ class AIService:
             )
             
             if not hasattr(response, 'text') or not response.text:
-                print("Avviso: Risposta vuota o senza testo da Gemini")
+                print("Warning: Empty response or no text from Gemini")
                 return ""
             
             return response.text.strip()
         except Exception as e:
-            print(f"Errore nella chiamata API Gemini: {e}")
+            print(f"Error calling Gemini API: {e}")
             return ""
         
     def generate_flashcards(self, content: str, num_cards: int = 10, use_web_search: bool = False) -> List[Dict]:
         web_search_instruction = ""
         if use_web_search:
             web_search_instruction = """
-                                        IMPORTANTE: Oltre al contenuto fornito, utilizza anche la tua conoscenza generale sull'argomento.
-                                        Integra informazioni aggiuntive, esempi recenti, dettagli accurati e contesto per creare flashcard più complete.
-                                        Assicurati che tutte le informazioni siano accurate e verificate.
+                                        IMPORTANT: In addition to the provided content, also use your general knowledge about the topic.
+                                        Integrate additional information, recent examples, accurate details, and context to create more complete flashcards.
+                                        Ensure all information is accurate and verified.
                                         """
         else:
             web_search_instruction = """
-                                        IMPORTANTE: Basati SOLO sul contenuto fornito. Non aggiungere informazioni esterne.
+                                        IMPORTANT: Base answers ONLY on the provided content. Do not add external information.
                                         """
         
-        prompt = f"""Sei un assistente esperto nella creazione di flashcard per studenti universitari. Il tuo obiettivo è applicare i principi di Andy Matuschak per creare flashcard "atomiche" e che favoriscano la comprensione.
+        prompt = f"""You are an expert assistant in creating flashcards for university students. Your goal is to apply Andy Matuschak's principles to create "atomic" flashcards that foster understanding.
 
                     {web_search_instruction}
 
-                    Contenuto:
+                    Content:
                     {content}
 
-                    IMPORTANTE: Segui queste 5 REGOLE ASSOLUTE per OGNI flashcard che crei:
-                    1.  **Scomponi (Focalizzata)**: Ogni flashcard deve riguardare UN SOLO concetto o fatto. NON creare flashcard che chiedono liste (es. "Quali sono i 3 tipi di X?"). Invece, crea 3 card separate o usa la scomposizione (es. "Un tipo di X è...").
-                    2.  **Precisa**: La domanda non deve essere ambigua.
-                    3.  **Chiedi il "Perché"**: Oltre ai fatti, crea domande sul "perché" un concetto funziona in un certo modo (es. "Perché l'algoritmo X usa una coda invece di uno stack?").
-                    4.  **Sforzo Cognitivo**: La risposta NON deve essere intuibile dalla domanda. Evita domande Sì/No.
-                    5.  **Concettuale**: Evita definizioni secche. Chiedi differenze (es. "Differenza tra X e Y"), attributi (es. "Cosa è sempre vero per X?"), o implicazioni (es. "Quale problema risolve X?").
+                    IMPORTANT: Follow these 5 ABSOLUTE RULES for EVERY flashcard you create:
+                    1.  **Decompose (Focused)**: Each flashcard must address ONE SINGLE concept or fact. DO NOT create flashcards that ask for lists (e.g., "What are the 3 types of X?"). Instead, create 3 separate cards or use decomposition (e.g., "One type of X is...").
+                    2.  **Precise**: The question must not be ambiguous.
+                    3.  **Ask "Why"**: Beyond facts, create questions about "why" a concept works in a certain way (e.g., "Why does algorithm X use a queue instead of a stack?").
+                    4.  **Cognitive Effort**: The answer MUST NOT be guessable from the question. Avoid Yes/No questions.
+                    5.  **Conceptual**: Avoid dry definitions. Ask about differences (e.g., "Difference between X and Y"), attributes (e.g., "What is always true for X?"), or implications (e.g., "What problem does X solve?").
 
-                    Crea {num_cards} flashcard che seguono queste regole.
+                    Create {num_cards} flashcards that follow these rules.
 
-                    IMPORTANTE: Rispondi SOLO con un array JSON valido, senza markdown o formattazione.
-                    Formato richiesto:
-                    [{{"front": "Domanda atomica e precisa", "back": "Risposta concisa", "difficulty": "easy|medium|hard", "tags": ["tag1", "tag2"]}}]"""
+                    IMPORTANT: Respond ONLY with a valid JSON array, without markdown or formatting.
+                    Required format:
+                    [{{"front": "Atomic, precise question", "back": "Concise answer", "difficulty": "easy|medium|hard", "tags": ["tag1", "tag2"]}}]"""
 
         try:
             response = self.client.models.generate_content(
@@ -93,6 +93,6 @@ class AIService:
             return validated_cards[:num_cards]
             
         except json.JSONDecodeError as e:
-            raise Exception(f"Errore nel parsing della risposta AI: {e}")
+            raise Exception(f"Error parsing AI response: {e}")
         except Exception as e:
-            raise Exception(f"Errore nella generazione delle flashcard: {e}")
+            raise Exception(f"Error generating flashcards: {e}")

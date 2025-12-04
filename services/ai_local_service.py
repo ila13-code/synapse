@@ -59,7 +59,7 @@ class LocalLLMService:
             raw_text = response.choices[0].message.content
             return raw_text.strip() if raw_text else ""
         except Exception as e:
-            raise RuntimeError(f"Errore nella chiamata al LLM locale: {e}") from e
+            raise RuntimeError(f"Error calling local LLM: {e}") from e
         
     def _clean_response_text(self, raw: str) -> str:
         text = raw.strip()
@@ -78,20 +78,20 @@ class LocalLLMService:
         web_search_instruction = ""
         if use_web_search:
             web_search_instruction = """
-                                    IMPORTANTE: Oltre al contenuto fornito, utilizza anche la tua conoscenza generale sull'argomento.
-                                    Integra informazioni aggiuntive, esempi recenti, dettagli accurati e contesto per creare flashcard più complete.
-                                    Assicurati che tutte le informazioni siano accurate e verificate.
+                                    IMPORTANT: In addition to the provided content, also use your general knowledge about the topic.
+                                    Integrate additional information, recent examples, accurate details, and context to create more complete flashcards.
+                                    Ensure all information is accurate and verified.
                                     """
         else:
             web_search_instruction = """
-                                    IMPORTANTE: Basati SOLO sul contenuto fornito. Non aggiungere informazioni esterne.
+                                    IMPORTANT: Base answers ONLY on the provided content. Do not add external information.
                                     """
 
-        prompt = f"""Sei un assistente esperto nella creazione di flashcard per studenti universitari. Il tuo obiettivo è applicare i principi di Andy Matuschak per creare flashcard "atomiche" e che favoriscano la comprensione.
+        prompt = f"""You are an expert assistant in creating flashcards for university students. Your goal is to apply Andy Matuschak's principles to create "atomic" flashcards that foster understanding.
 
                     {web_search_instruction}
 
-                    Contenuto:
+                    Content:
                     {content}
 
                     IMPORTANTE: Segui queste 5 REGOLE ASSOLUTE per OGNI flashcard che crei:
@@ -115,7 +115,7 @@ class LocalLLMService:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Sei un assistente esperto nella creazione di flashcard educative. Rispondi sempre con JSON valido."
+                        "content": "You are an expert assistant in creating educational flashcards. Always respond with valid JSON."
                     },
                     {
                         "role": "user",
@@ -131,20 +131,20 @@ class LocalLLMService:
             flashcards = json.loads(cleaned)
             
             if not isinstance(flashcards, list):
-                raise ValueError("La risposta non è un array JSON")
+                raise ValueError("Response is not a JSON array")
             
             for card in flashcards:
                 if 'front' not in card or 'back' not in card:
-                    raise ValueError("Flashcard mancante di campi 'front' o 'back'")
+                    raise ValueError("Flashcard missing 'front' or 'back' fields")
                 card.setdefault('difficulty', 'medium')
                 card.setdefault('tags', [])
             
             return flashcards[:num_cards]
             
         except json.JSONDecodeError as e:
-            raise ValueError(f"Errore nel parsing JSON della risposta: {e}")
+            raise ValueError(f"Error parsing JSON response: {e}")
         except Exception as e:
-            raise RuntimeError(f"Errore nella generazione delle flashcard: {e}")
+            raise RuntimeError(f"Error generating flashcards: {e}")
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         try:
