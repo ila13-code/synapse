@@ -1,6 +1,6 @@
 # Synapse
-
-## Setup rapido
+## Link alle slide: https://www.canva.com/design/DAG7ZGP-xUE/9DsrWSF4P4VmKBDHxp55fg/edit?utm_content=DAG7ZGP-xUE&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+### Setup rapido
 
 1. Create una copia del file `.env.example` oppure create un nuovo `.env` nella root del progetto.
 2. Rinominatelo in `.env` e aggiungete le vostre chiavi/config preferite:
