@@ -59,13 +59,36 @@ class OllamaEmbeddingFunction:
             raise RuntimeError(f"Errore durante la richiesta di embedding a Ollama: {e}") from e
 
 
+
 class GeminiEmbeddingFunction:
-    def __init__(self, api_key: str, model: str = "gemini-embedding-001"):
-        self.client = genai.Client(api_key=api_key)
+    def __init__(self, api_keys: List[str] | str, model: str = "gemini-embedding-001"):
+        """
+        Initialize GeminiEmbeddingFunction with one or multiple API keys for round-robin usage.
+        """
+        if isinstance(api_keys, str):
+            self.api_keys = [api_keys]
+        else:
+            self.api_keys = [k for k in api_keys if k]
+            
+        if not self.api_keys:
+            raise ValueError("Almeno una chiave API Gemini valida deve essere fornita")
+
+        # Create a pool of clients
+        self.clients = [genai.Client(api_key=k) for k in self.api_keys]
+        self.current_client_index = 0
+        
         if not model.startswith("models/"):
             self.model_name = f"models/{model}"
         else:
             self.model_name = model
+            
+        print(f"[RAG] GeminiEmbeddingFunction inizializzata con {len(self.clients)} chiavi API")
+
+    def _get_next_client(self):
+        """Returns the next client in the rotation"""
+        client = self.clients[self.current_client_index]
+        self.current_client_index = (self.current_client_index + 1) % len(self.clients)
+        return client
 
     def embed(self, texts: List[str]) -> List[List[float]]:
         if not texts:
@@ -74,7 +97,7 @@ class GeminiEmbeddingFunction:
         if isinstance(texts, str):
             texts = [texts]
 
-        print(f"[DEBUG] Embedding {len(texts)} testi con Gemini...")
+        print(f"[DEBUG] Embedding {len(texts)} testi con Gemini (Round Robin)...")
         
         valid_texts_map = {}
         for i, text in enumerate(texts):
@@ -93,14 +116,30 @@ class GeminiEmbeddingFunction:
         def _call_api_with_retry(func, *args, **kwargs):
             max_retries = 5
             base_delay = 2
+            
+            # Use current client first, then iterate others if needed
+            # Or just rotate on every call? 
+            # Better: rotate only on error? No, User wants Round Robin for Rate Limits.
+            # So rotate on every batch/call.
+            
+            # We must get a client. But here we are inside a helper.
+            # Let's pass client from outside loop or get it here?
+            # Ideally we pick a client for the attempt.
+            
             for attempt in range(max_retries):
+                # Pick a client (Round Robin)
+                current_client = self._get_next_client()
+                
                 try:
-                    return func(*args, **kwargs)
+                    # func is expected to be bound to a client, but here we change client.
+                    # So we cannot pass client.models.embed_content as func.
+                    # We should pass just the method name or use the client directly.
+                    return current_client.models.embed_content(*args, **kwargs)
                 except Exception as e:
-                    is_quota = "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+                    is_quota = "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "quota" in str(e).lower()
                     if is_quota and attempt < max_retries - 1:
                         wait_time = base_delay * (2 ** attempt)
-                        print(f"[RAG] Quota superata. Riprovo tra {wait_time}s... (Tentativo {attempt+1}/{max_retries})")
+                        print(f"[RAG] Quota superata con chiave {self.current_client_index-1}. Riprovo tra {wait_time}s con altra chiave... (Tentativo {attempt+1}/{max_retries})")
                         time.sleep(wait_time)
                     else:
                         raise e
@@ -113,7 +152,7 @@ class GeminiEmbeddingFunction:
                 
                 try:
                     res = _call_api_with_retry(
-                        self.client.models.embed_content,
+                        None, # dummy func
                         model=self.model_name,
                         contents=batch_texts,
                     )
@@ -124,7 +163,7 @@ class GeminiEmbeddingFunction:
                     for t in batch_texts:
                         try:
                             single = _call_api_with_retry(
-                                self.client.models.embed_content,
+                                None,
                                 model=self.model_name,
                                 contents=t,
                             )
@@ -239,19 +278,27 @@ class RAGService:
             self.local_base_url = os.getenv("LOCAL_LLM_BASE_URL", "http://127.0.0.1:11434/v1")
             self.local_model = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
         else:
-            self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+            # Raccogli tutte le chiavi disponibili per il round-robin
+            self.gemini_api_keys = []
             
-            # Fallback a chiavi numerate se la chiave principale manca
-            if not self.gemini_api_key:
-                for i in range(1, 11):
-                    k = os.getenv(f"GEMINI_API_KEY_{i}")
-                    if k:
-                        self.gemini_api_key = k
-                        print(f"[RAG] Usando {f'GEMINI_API_KEY_{i}'} per embedding")
-                        break
+            # Chiave principale
+            main_key = os.getenv("GEMINI_API_KEY")
+            if main_key:
+                self.gemini_api_keys.append(main_key)
+            
+            # Chiavi numerate (1-10)
+            for i in range(1, 11):
+                k = os.getenv(f"GEMINI_API_KEY_{i}")
+                if k:
+                    self.gemini_api_keys.append(k)
+                    
+            # Rimuovi duplicati preservando ordine
+            self.gemini_api_keys = list(dict.fromkeys(self.gemini_api_keys))
 
-            if not self.gemini_api_key:
+            if not self.gemini_api_keys:
                 print("ATTENZIONE: Nessuna GEMINI_API_KEY valida trovata (.env).")
+            else:
+                 print(f"[RAG] Trovate {len(self.gemini_api_keys)} chiavi API per embedding")
             
             self.gemini_embed_model = "gemini-embedding-001"
         
@@ -264,10 +311,12 @@ class RAGService:
             print(f"[RAG] Provider: Ollama ({self.local_model})")
             return OllamaEmbeddingFunction(base_url=self.local_base_url, model=self.local_model)
         else:
-            if not self.gemini_api_key:
+            if not self.gemini_api_keys:
                 raise RuntimeError("GEMINI_API_KEY non impostata e USE_LOCAL_LLM=false")
             print(f"[RAG] Provider: Gemini ({self.gemini_embed_model})")
-            return GeminiEmbeddingFunction(api_key=self.gemini_api_key, model=self.gemini_embed_model)
+            # Passa la LISTA delle chiavi
+            return GeminiEmbeddingFunction(api_keys=self.gemini_api_keys, model=self.gemini_embed_model)
+
 
     def _get_embedding_dim(self) -> int:
         if self._embedding_dim is None:
