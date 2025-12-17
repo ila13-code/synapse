@@ -241,20 +241,18 @@ class GenerationThread(QThread):
     
     def _generate_with_rag(self):
         try:
-            print("[DEBUG] 1. Avvio _generate_with_rag.")
+            print("[DEBUG] Avvio _generate_with_rag")
             flashcards = []
             
             # Step 1: Create/Get collection
             self.progress.emit(5, "Initializing vector database...")
-            print("[DEBUG] 2. Creating collection...")
             collection_name = self.rag_service.create_collection(
-                self.subject_id, 
+                self.subject_id,
                 self.subject_name
             )
             
-            # Step 2: Index ONLY documents not yet present in Qdrant
+            # Step 2: Index documents not yet in Qdrant
             self.progress.emit(10, "Checking document indexing...")
-            print("[DEBUG] 3. Checking/indexing RAG...")
             for i, doc in enumerate(self.documents):
                 if not doc.get('content'):
                     continue
@@ -276,140 +274,112 @@ class GenerationThread(QThread):
                 progress_pct = 10 + (i + 1) * 10 // max(1, len(self.documents))
                 self.progress.emit(progress_pct, f"Indexed: {doc['name']}")
             print("[DEBUG] 3. RAG checking/indexing completed.")
-
             
-            # Step 3: ALWAYS use chunks saved in Qdrant for topic analysis
+            # Step 3: Get chunks from Qdrant
             print("[DEBUG] 4. Reading chunks from collection...")
             self.progress.emit(25, "Retrieving indexed content...")
             all_chunks = self.rag_service.get_all_chunks_texts(collection_name)
             if not all_chunks:
-                # Fallback (non dovrebbe succedere): ricava dai documenti in memoria
-                print("[DEBUG] Nessun chunk trovato in Qdrant: fallback a chunking in memoria")
-                for doc in self.documents:
-                    if doc.get('content'):
-                        all_chunks.extend(self.rag_service.chunk_text(doc['content']))
+                print("[DEBUG] Fallback a chunking in memoria")
+                all_chunks = [chunk for doc in self.documents if doc.get('content') 
+                              for chunk in self.rag_service.chunk_text(doc['content'])]
             
-            # Step 4: Extract main topics
-            print("[DEBUG] 5. Extracting topics...")
+            # Step 4: Extract topics
+            self.progress.emit(30, "Extracting topics...")
+            has_user_query = self.user_query and self.user_query.strip()
             
-            # If user provided a query, use it to focus topics
-            if self.user_query and self.user_query.strip():
-                user_q = self.user_query.strip()
-                self.progress.emit(30, f"Searching content for: {user_q}")
-                print(f"[DEBUG] Using user query: {user_q}")
-
-                # IMPORTANT: If user asks a specific question, 
-                # topics must be extracted FROM THE QUESTION, not from documents!
-                # Documents only serve as context to answer.
-                
-                print(f"[DEBUG] Extracting topics FROM USER QUERY (not from documents)")
-                topics = self.reflection_service.extract_topics([user_q], self.num_cards)
+            if has_user_query:
+                print(f"[DEBUG] Extracting topics from user query: {self.user_query.strip()}")
+                topics = self.reflection_service.extract_topics([self.user_query.strip()], self.num_cards)
                 if not topics:
-                    topics = [user_q]
-                self.progress.emit(35, f"Identified {len(topics)} topics from user query")
+                    topics = [self.user_query.strip()]
             else:
-                # Otherwise extract topics automatically
                 topics = self.reflection_service.extract_topics(all_chunks, self.num_cards)
-                self.progress.emit(35, f"Identified {len(topics)} topics")
-
-            # Limita i topic al numero richiesto
-            topics = topics[:self.num_cards]
             
-            # Step 5: For each topic, generate flashcard with RAG + Reflection
-            print("[DEBUG] 6. Starting generation per topic...")
+            topics = topics[:self.num_cards]
+            self.progress.emit(35, f"Identified {len(topics)} topics")
+            
+            # Step 5: Generate flashcards for each topic
+            print(f"[DEBUG] Starting generation for {len(topics)} topics")
+            
             for i, topic in enumerate(topics):
                 try:
                     base_progress = 35 + (i * 65 // len(topics))
-                    
                     self.progress.emit(base_progress, f"Analyzing: {topic}")
                     
-                    # IMPORTANT: If there's a user query, combine topic + query for search
-                    # This avoids finding irrelevant chunks that only match generic words
-                    if self.user_query and self.user_query.strip():
-                        # Search using "topic IN THE CONTEXT OF user query"
-                        search_query = f"{topic} (in the context of: {self.user_query.strip()})"
-                        print(f"[RAG-DEBUG] Searching chunks for topic '{topic}' in user query context")
-                    else:
-                        search_query = topic
-                        print(f"[RAG-DEBUG] Searching chunks for topic: '{topic}'")
+                    # Build search query
+                    search_query = f"{topic} (in the context of: {self.user_query.strip()})" if has_user_query else topic
                     
+                    # Search relevant chunks
                     relevant_chunks = self.rag_service.search_relevant_chunks(
-                        collection_name, 
-                        search_query, 
-                        n_results=self.rag_service.chunks_per_topic  # Usa configurazione
+                        collection_name, search_query, n_results=self.rag_service.chunks_per_topic
                     )
                     
-                    # Log dei chunks recuperati
-                    print(f"[RAG-DEBUG] Trovati {len(relevant_chunks)} chunks rilevanti per '{topic}'")
-                    if relevant_chunks:
-                        for idx, chunk in enumerate(relevant_chunks[:3]):  # Mostra solo i primi 3
-                            print(f"  Chunk {idx+1}: {chunk['content'][:100]}... (da '{chunk['metadata']['document_name']}')")
+                    # Log chunks
+                    print(f"[RAG] Found {len(relevant_chunks)} chunks for '{topic}'")
+                    for idx, chunk in enumerate(relevant_chunks[:3]):
+                        print(f"  Chunk {idx+1} (score: {chunk.get('score', 0):.3f}): {chunk['content'][:100]}...")
                     
+                    # Check relevance if user provided a query
+                    if has_user_query:
+                        relevance_check = self.rag_service.check_topic_relevance(relevant_chunks)
+                        
+                        if not relevance_check["is_relevant"] and not self.use_web_search:
+                            error_msg = (
+                                f"L'argomento '{topic}' non sembra essere presente nei documenti. "
+                                f"{relevance_check['message']}. "
+                                f"Attiva la ricerca web o carica documenti pertinenti."
+                            )
+                            print(f"[RAG-WARNING] {error_msg}")
+                            self.error.emit("Rilevanza insufficiente", error_msg)
+                            break
+                        elif not relevance_check["is_relevant"]:
+                            print(f"[RAG-INFO] {relevance_check['message']} - procedo con web search")
+                    
+                    # Build context from chunks
                     context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
-
-                    # Integra snippet web per la domanda utente (NON per il topic!) se richiesto
+                    
+                    # Add web search if enabled
                     if self.use_web_search and self.web_search_service:
-                        # Usa la query originale dell'utente, non il topic estratto dal RAG
-                        web_query = self.user_query or topic
-                        print(f"[WEB] Avvio ricerca web per query utente: '{web_query}' (topic RAG era: '{topic}')")
+                        web_query = self.user_query.strip() if has_user_query else topic
                         try:
                             web_block = self.web_search_service.enrich_context_block(web_query, max_results=3)
-                        except Exception:
-                            web_block = ""
-                        if web_block:
-                            context += f"\n\n{web_block}\n"
-                            print(f"[WEB] Ricerca web completata per query '{web_query}' e integrata nel contesto")
-                        else:
-                            print(f"[WEB] Nessun risultato web per query '{web_query}' o errore durante la ricerca")
+                            if web_block:
+                                context += f"\n\n{web_block}\n"
+                                print(f"[WEB] Integrated web results for '{web_query}'")
+                        except Exception as e:
+                            print(f"[WEB] Error: {e}")
                     
+                    # Generate flashcard
                     if self.use_reflection:
-                        self.progress.emit(
-                            base_progress + 5, 
-                            f"Generating with Reflection: {topic}"
-                        )
+                        self.progress.emit(base_progress + 5, f"Generating with Reflection: {topic}")
                         flashcard = self.reflection_service.generate_flashcard_with_reflection(
-                            context, 
-                            topic,
-                            max_iterations=2
+                            context, topic, max_iterations=2
                         )
                     else:
-                        flashcard = self.reflection_service.generate_flashcard_draft(
-                            context, 
-                            topic
-                        )
+                        flashcard = self.reflection_service.generate_flashcard_draft(context, topic)
                     
                     flashcards.append(flashcard)
-
-                    # Interrompi se abbiamo raggiunto il numero richiesto
+                    
                     if len(flashcards) >= self.num_cards:
                         break
                     
-                except Exception as e_topic:
-                    # Don't block everything if a single topic fails
-                    print(f"Error generating flashcard for '{topic}': {e_topic}")
+                except Exception as e:
+                    print(f"[ERROR] Failed to generate flashcard for '{topic}': {e}")
                     continue
             
-            print("[DEBUG] 7. _generate_with_rag generation completed.")
+            print(f"[DEBUG] Generation completed: {len(flashcards)} flashcards")
             self.progress.emit(100, "Generation completed!")
             return flashcards
 
         except ConnectionError as e:
-            print("======================================================")
-            print(f"ERRORE CONNESSIONE in '_generate_with_rag': {e}")
-            print("======================================================")
-            # Clearer user message
-            self.error.emit(
-                "Embedding service not available",
-                str(e)
-            )
+            print(f"[ERROR] Connection error: {e}")
+            self.error.emit("Embedding service not available", str(e))
             return []
         except Exception as e:
-            print("======================================================")
-            print(f"ERRORE CRITICO in '_generate_with_rag': {e}")
+            print(f"[ERROR] Critical error: {e}")
             traceback.print_exc()
-            print("======================================================")
-            # Rilancia l'eccezione per farla catturare dal 'run'
-            raise e
+            raise
 
 
 class SubjectWindow(QMainWindow):
@@ -744,6 +714,22 @@ class SubjectWindow(QMainWindow):
             QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
                 background-color: {primary_color}DD;
             }}
+            QSpinBox::up-arrow {{
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-bottom: 6px solid white;
+            }}
+            QSpinBox::down-arrow {{
+                image: none;
+                width: 0;
+                height: 0;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 6px solid white;
+            }}
         """)
         
         # Persisti la scelta dell'utente
@@ -1044,6 +1030,11 @@ class SubjectWindow(QMainWindow):
         loading.setCancelButton(None)  # Non cancellabile
         loading.setMinimumDuration(0)
         loading.setValue(0)
+        # Centra il dialog rispetto alla finestra padre
+        loading.move(
+            self.x() + (self.width() - loading.width()) // 2,
+            self.y() + (self.height() - loading.height()) // 2
+        )
         loading.show()
         
         # Crea e avvia thread
@@ -1192,6 +1183,11 @@ class SubjectWindow(QMainWindow):
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setValue(0)
+        # Centra il dialog rispetto alla finestra padre
+        progress.move(
+            self.x() + (self.width() - progress.width()) // 2,
+            self.y() + (self.height() - progress.height()) // 2
+        )
         
         # Avvia il thread di generazione
         use_web_search = self.web_search_checkbox.isChecked()

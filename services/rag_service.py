@@ -511,6 +511,48 @@ class RAGService:
         
         return formatted
 
+    def check_topic_relevance(self, relevant_chunks: List[Dict[str, Any]], 
+                              min_score: float = 0.5) -> Dict[str, Any]:
+        """
+        Verifica la pertinenza dei chunks trovati per un topic.
+        
+        Args:
+            relevant_chunks: Lista di chunks restituiti da search_relevant_chunks
+            min_score: Score minimo per considerare un chunk pertinente (default: 0.5)
+        
+        Returns:
+            Dict con:
+                - is_relevant (bool): True se i chunks sono sufficientemente pertinenti
+                - best_score (float): Il miglior score trovato (0 se nessun chunk)
+                - num_chunks (int): Numero di chunks trovati
+                - message (str): Messaggio descrittivo
+        """
+        if not relevant_chunks:
+            return {
+                "is_relevant": False,
+                "best_score": 0.0,
+                "num_chunks": 0,
+                "message": "Nessun chunk trovato per questo argomento"
+            }
+        
+        best_score = max(chunk.get('score', 0) for chunk in relevant_chunks)
+        num_chunks = len(relevant_chunks)
+        
+        is_relevant = best_score >= min_score
+        
+        if is_relevant:
+            message = f"Trovati {num_chunks} chunks pertinenti (miglior rilevanza: {best_score:.1%})"
+        else:
+            message = f"Rilevanza bassa: {num_chunks} chunks trovati ma miglior score {best_score:.1%} < {min_score:.1%}"
+        
+        print(f"[RAG-RELEVANCE] {message}")
+        
+        return {
+            "is_relevant": is_relevant,
+            "best_score": best_score,
+            "num_chunks": num_chunks,
+            "message": message
+        }
 
     def delete_collection(self, subject_id: int, subject_name: str) -> None:
         collection_name = self._collection_name(subject_id, subject_name)
