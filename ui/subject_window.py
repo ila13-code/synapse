@@ -22,8 +22,8 @@ from services.reflection_service import ReflectionService
 from services.tools.web_search_service import WebSearchService
 from ui.dialogs import EditFlashcardDialog, ToggleSwitch
 from ui.icons import IconProvider
-from ui.styles import (get_caption_text_color, get_card_background,
-                       get_icon_color, get_secondary_text_color,
+from ui.styles import ( get_card_background,
+                       get_icon_color,
                        get_text_color, get_theme_colors, get_theme_style)
 from ui.subject_styles import (get_caption_label_style,
                                get_delete_button_style,
@@ -43,7 +43,7 @@ class DocumentUploadThread(QThread):
         self.subject_id = subject_id
         self.subject_name = subject_name
         self.file_service = file_service
-        self.db = db                  # lasciato per compatibilità, NON usato nel thread
+        self.db = db                
         self.rag_service = rag_service
     
     def run(self):
@@ -53,16 +53,12 @@ class DocumentUploadThread(QThread):
             if not doc_id:
                 self.finished.emit(False, "Error loading document")
                 return
-
-            # 2) Use a NEW DatabaseManager inside the thread (SQLite fix)
             try:
                 from database.db_manager import DatabaseManager
                 db = DatabaseManager()  # connection bound to this thread
             except Exception as e:
                 self.finished.emit(False, f"Error initializing DB in thread: {e}")
                 return
-
-                        # 3) Indicizzazione RAG (non bloccare l'upload se fallisce)
             try:
                 doc = db.get_document(doc_id)
                 if doc and doc.get('content'):
@@ -74,83 +70,13 @@ class DocumentUploadThread(QThread):
                         doc['content']
                     )
             except Exception as e:
-                # Log but don't fail the upload
                 print(f"RAG indexing error: {e}")
 
-            # 4) Success
             self.finished.emit(True, "Document uploaded and indexed successfully!")
         
         except Exception as e:
             self.finished.emit(False, f"Errore: {str(e)}")
 
-class Snackbar(QFrame):
-    """Widget snackbar che scompare automaticamente"""
-    
-    def __init__(self, message, parent=None, duration=3000):
-        super().__init__(parent)
-        self.duration = duration  # Durata in millisecondi
-        self.setProperty("class", "snackbar")
-        self.setFixedHeight(50)
-        
-        # Stile - SOLO LIGHT
-        bg_color = "#424242"
-        text_color = "#FFFFFF"
-        
-        self.setStyleSheet(f"""
-            QFrame[class="snackbar"] {{
-                background-color: {bg_color};
-                border-radius: 8px;
-                padding: 12px 24px;
-            }}
-            QLabel {{
-                color: {text_color};
-                font-size: 14px;
-                font-weight: 500;
-            }}
-        """)
-        
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 0, 16, 0)
-        
-        # Icona successo
-        icon_label = QLabel()
-        IconProvider.setup_icon_label(icon_label, "check", 20, "#10B981")
-        layout.addWidget(icon_label)
-        
-        # Messaggio
-        msg_label = QLabel(message)
-        layout.addWidget(msg_label)
-        layout.addStretch()
-        
-        # Effetto opacità per animazione
-        self.opacity_effect = QGraphicsOpacityEffect()
-        self.setGraphicsEffect(self.opacity_effect)
-        self.opacity_effect.setOpacity(0)
-        
-    def show_animated(self):
-        """Mostra con animazione fade-in"""
-        self.show()
-        
-        # Animazione fade-in
-        self.fade_in_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.fade_in_animation.setDuration(300)
-        self.fade_in_animation.setStartValue(0)
-        self.fade_in_animation.setEndValue(1)
-        self.fade_in_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-        self.fade_in_animation.start()
-        
-        # Timer per nascondere dopo il tempo specificato
-        QTimer.singleShot(self.duration, self.hide_animated)
-    
-    def hide_animated(self):
-        """Nascondi con animazione fade-out"""
-        self.fade_out_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.fade_out_animation.setDuration(300)
-        self.fade_out_animation.setStartValue(1)
-        self.fade_out_animation.setEndValue(0)
-        self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InCubic)
-        self.fade_out_animation.finished.connect(self.deleteLater)
-        self.fade_out_animation.start()
 
 
 class GenerationThread(QThread):
@@ -174,7 +100,7 @@ class GenerationThread(QThread):
         self.use_web_search = use_web_search
         self.use_rag = use_rag
         self.use_reflection = use_reflection
-        self.user_query = user_query  # NUOVO ATTRIBUTO
+        self.user_query = user_query
         self.web_search_service = web_search_service  # Servizio ricerca web
     
     def run(self):
@@ -437,6 +363,77 @@ class GenerationThread(QThread):
             print("======================================================")
             # Rilancia l'eccezione per farla catturare dal 'run'
             raise e
+
+# DA QUI IN POI SOLO UI
+
+class Snackbar(QFrame):
+    """Widget snackbar che scompare automaticamente"""
+    
+    def __init__(self, message, parent=None, duration=3000):
+        super().__init__(parent)
+        self.duration = duration  # Durata in millisecondi
+        self.setProperty("class", "snackbar")
+        self.setFixedHeight(50)
+        
+        # Stile - SOLO LIGHT
+        bg_color = "#424242"
+        text_color = "#FFFFFF"
+        
+        self.setStyleSheet(f"""
+            QFrame[class="snackbar"] {{
+                background-color: {bg_color};
+                border-radius: 8px;
+                padding: 12px 24px;
+            }}
+            QLabel {{
+                color: {text_color};
+                font-size: 14px;
+                font-weight: 500;
+            }}
+        """)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(16, 0, 16, 0)
+        
+        # Icona successo
+        icon_label = QLabel()
+        IconProvider.setup_icon_label(icon_label, "check", 20, "#10B981")
+        layout.addWidget(icon_label)
+        
+        # Messaggio
+        msg_label = QLabel(message)
+        layout.addWidget(msg_label)
+        layout.addStretch()
+        
+        # Effetto opacità per animazione
+        self.opacity_effect = QGraphicsOpacityEffect()
+        self.setGraphicsEffect(self.opacity_effect)
+        self.opacity_effect.setOpacity(0)
+        
+    def show_animated(self):
+        """Mostra con animazione fade-in"""
+        self.show()
+        
+        # Animazione fade-in
+        self.fade_in_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_in_animation.setDuration(300)
+        self.fade_in_animation.setStartValue(0)
+        self.fade_in_animation.setEndValue(1)
+        self.fade_in_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.fade_in_animation.start()
+        
+        # Timer per nascondere dopo il tempo specificato
+        QTimer.singleShot(self.duration, self.hide_animated)
+    
+    def hide_animated(self):
+        """Nascondi con animazione fade-out"""
+        self.fade_out_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_out_animation.setDuration(300)
+        self.fade_out_animation.setStartValue(1)
+        self.fade_out_animation.setEndValue(0)
+        self.fade_out_animation.setEasingCurve(QEasingCurve.Type.InCubic)
+        self.fade_out_animation.finished.connect(self.deleteLater)
+        self.fade_out_animation.start()
 
 
 class SubjectWindow(QMainWindow):
@@ -1028,8 +1025,6 @@ class SubjectWindow(QMainWindow):
             if file_path and os.path.isfile(file_path):
                 self._process_uploaded_file(file_path)
     
-    # I metodi globali di drag/drop non sono più collegati direttamente al widget,
-    # ma lasciamoli come fallback generici (non usati dalla card)
     def dragEnterEvent(self, event):
         try:
             if event.mimeData() and event.mimeData().hasUrls():
@@ -1636,57 +1631,4 @@ class SubjectWindow(QMainWindow):
         
         self.update()
     
-    def export_flashcards(self):
-        """Esporta le flashcard in vari formati"""
-        if not self.flashcards:
-            QMessageBox.warning(
-                self,
-                "No Flashcards",
-                "No flashcards to export"
-            )
-            return
-        
-        # Chiedi formato di export
-        export_service = ExportService()
-        
-        options = QFileDialog.Options()
-        file_path, selected_filter = QFileDialog.getSaveFileName(
-            self,
-            "Export Flashcards",
-            f"{self.subject_data['name']}_flashcards",
-            "CSV (*.csv);;TSV (*.tsv);;APKG (*.apkg)",
-            options=options
-        )
-        
-        if not file_path:
-            return
-        
-        try:
-            # Assicurati che il file abbia l'estensione corretta
-            if 'CSV' in selected_filter and not file_path.endswith('.csv'):
-                file_path += '.csv'
-            elif 'TSV' in selected_filter and not file_path.endswith('.tsv'):
-                file_path += '.tsv'
-            elif 'APKG' in selected_filter and not file_path.endswith('.apkg'):
-                file_path += '.apkg'
-            
-            # Determina il formato in base al filtro selezionato
-            if 'CSV' in selected_filter:
-                export_service.export_to_csv(self.flashcards, file_path)
-            elif 'TSV' in selected_filter:
-                export_service.export_to_tsv(self.flashcards, file_path)
-            elif 'APKG' in selected_filter:
-                # Passa il nome della materia come nome del deck
-                export_service.export_to_apkg(self.flashcards, file_path, self.subject_data['name'])
-            
-            QMessageBox.information(
-                self,
-                "Success",
-                "Flashcards exported successfully!"
-            )
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Error during export: {str(e)}"
-            )
+    
