@@ -4,6 +4,7 @@ import os
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List
+import time
 
 import requests
 from google import genai
@@ -89,6 +90,21 @@ class GeminiEmbeddingFunction:
         MAX_BATCH_SIZE = 100
         valid_embeddings_map = {}
         
+        def _call_api_with_retry(func, *args, **kwargs):
+            max_retries = 5
+            base_delay = 2
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    is_quota = "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+                    if is_quota and attempt < max_retries - 1:
+                        wait_time = base_delay * (2 ** attempt)
+                        print(f"[RAG] Quota superata. Riprovo tra {wait_time}s... (Tentativo {attempt+1}/{max_retries})")
+                        time.sleep(wait_time)
+                    else:
+                        raise e
+
         try:
             for i in range(0, len(batchable_texts), MAX_BATCH_SIZE):
                 batch_texts = batchable_texts[i:i + MAX_BATCH_SIZE]
@@ -96,23 +112,30 @@ class GeminiEmbeddingFunction:
                 print(f"[DEBUG] Batch {i//MAX_BATCH_SIZE + 1}/{(len(batchable_texts)-1)//MAX_BATCH_SIZE + 1}")
                 
                 try:
-                    res = self.client.models.embed_content(
+                    res = _call_api_with_retry(
+                        self.client.models.embed_content,
                         model=self.model_name,
                         contents=batch_texts,
                     )
-                except Exception:
+                except Exception as e:
+                    print(f"[DEBUG] Errore batch ({e}), passo a fallback singolo...")
                     # Fallback: una chiamata per testo
                     batch_embeddings = []
                     for t in batch_texts:
-                        single = self.client.models.embed_content(
-                            model=self.model_name,
-                            content=t,
-                        )
-                        emb_obj = getattr(single, "embedding", None)
-                        values = getattr(emb_obj, "values", None) if emb_obj is not None else None
-                        if values is None and isinstance(single, dict):
-                            values = single.get("embedding", {}).get("values")
-                        batch_embeddings.append([float(x) for x in (values or [])])
+                        try:
+                            single = _call_api_with_retry(
+                                self.client.models.embed_content,
+                                model=self.model_name,
+                                contents=t,
+                            )
+                            emb_obj = getattr(single, "embedding", None)
+                            values = getattr(emb_obj, "values", None) if emb_obj is not None else None
+                            if values is None and isinstance(single, dict):
+                                values = single.get("embedding", {}).get("values")
+                            batch_embeddings.append([float(x) for x in (values or [])])
+                        except Exception as inner_e:
+                            print(f"[DEBUG] Errore embedding singolo: {inner_e}")
+                            batch_embeddings.append(None)
                     
                     for j, emb in enumerate(batch_embeddings):
                         valid_embeddings_map[i + j] = emb
@@ -261,17 +284,41 @@ class RAGService:
         collections = self.client.get_collections().collections
         collection_exists = any(col.name == collection_name for col in collections)
         
+        target_dim = self._get_embedding_dim()
+        
+        if collection_exists:
+            try:
+                coll_info = self.client.get_collection(collection_name)
+                # Verifica se config.params o config.params.vectors sono validi
+                current_dim = None
+                if coll_info and coll_info.config and coll_info.config.params:
+                    # Qdrant client recenti usano 'vectors' che potrebbe essere un dict o un oggetto
+                    vec_config = coll_info.config.params.vectors
+                    # Se è VectorParams (oggetto)
+                    if hasattr(vec_config, 'size'):
+                        current_dim = vec_config.size
+                    # Se è dict o altro
+                    elif isinstance(vec_config, dict) and 'size' in vec_config:
+                        current_dim = vec_config['size']
+                
+                if current_dim is not None and current_dim != target_dim:
+                    print(f"[RAG] Dimensione mismatch ({current_dim} vs {target_dim}). Ricreazione...")
+                    self.client.delete_collection(collection_name)
+                    collection_exists = False
+                else:
+                    print(f"[RAG] Collection esistente: {collection_name} (dim: {current_dim})")
+            except Exception as e:
+                print(f"[RAG] Errore controllo dimensione collection: {e}. Procedo.")
+
         if not collection_exists:
             print(f"[RAG] Creazione nuova collection: {collection_name}")
             self.client.create_collection(
                 collection_name=collection_name,
                 vectors_config=VectorParams(
-                    size=self._get_embedding_dim(),
+                    size=target_dim,
                     distance=Distance.COSINE
                 )
             )
-        else:
-            print(f"[RAG] Collection esistente: {collection_name}")
         
         return collection_name
 
