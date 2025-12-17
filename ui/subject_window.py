@@ -317,16 +317,15 @@ class GenerationThread(QThread):
             
             # Step 5: For each topic, generate flashcard with RAG + Reflection
             print("[DEBUG] 6. Starting generation per topic...")
+            topics_with_no_chunks = 0 
+            
             for i, topic in enumerate(topics):
                 try:
                     base_progress = 35 + (i * 65 // len(topics))
                     
                     self.progress.emit(base_progress, f"Analyzing: {topic}")
                     
-                    # IMPORTANT: If there's a user query, combine topic + query for search
-                    # This avoids finding irrelevant chunks that only match generic words
                     if self.user_query and self.user_query.strip():
-                        # Search using "topic IN THE CONTEXT OF user query"
                         search_query = f"{topic} (in the context of: {self.user_query.strip()})"
                         print(f"[RAG-DEBUG] Searching chunks for topic '{topic}' in user query context")
                     else:
@@ -336,32 +335,47 @@ class GenerationThread(QThread):
                     relevant_chunks = self.rag_service.search_relevant_chunks(
                         collection_name, 
                         search_query, 
-                        n_results=self.rag_service.chunks_per_topic  # Usa configurazione
+                        n_results=self.rag_service.chunks_per_topic
                     )
                     
-                    # Log dei chunks recuperati
                     print(f"[RAG-DEBUG] Trovati {len(relevant_chunks)} chunks rilevanti per '{topic}'")
+                    
+                    if not relevant_chunks:
+                        topics_with_no_chunks += 1
+                        print(f"[RAG-WARNING] No relevant chunks for '{topic}'")
+                        
+                        #no chunk, no ricerca web - salto il topic
+                        if not self.use_web_search:
+                            print(f"[RAG-WARNING] Skipping '{topic}' (no chunks, web search disabled)")
+                            continue
+                        else:
+                            #vaodi avanti con la ricerca web
+                            print(f"[RAG-INFO] Continuing with web search for '{topic}'")
+                    
                     if relevant_chunks:
-                        for idx, chunk in enumerate(relevant_chunks[:3]):  # Mostra solo i primi 3
+                        for idx, chunk in enumerate(relevant_chunks[:3]):
                             print(f"  Chunk {idx+1}: {chunk['content'][:100]}... (da '{chunk['metadata']['document_name']}')")
                     
                     context = "\n\n".join([chunk['content'] for chunk in relevant_chunks])
 
-                    # Integra snippet web per la domanda utente (NON per il topic!) se richiesto
+                
                     if self.use_web_search and self.web_search_service:
-                        # Usa la query originale dell'utente, non il topic estratto dal RAG
                         web_query = self.user_query or topic
-                        print(f"[WEB] Avvio ricerca web per query utente: '{web_query}' (topic RAG era: '{topic}')")
+                        print(f"[WEB] Avvio ricerca web per query: '{web_query}'")
                         try:
                             web_block = self.web_search_service.enrich_context_block(web_query, max_results=3)
                         except Exception:
                             web_block = ""
                         if web_block:
                             context += f"\n\n{web_block}\n"
-                            print(f"[WEB] Ricerca web completata per query '{web_query}' e integrata nel contesto")
+                            print(f"[WEB] Ricerca web completata e integrata")
                         else:
-                            print(f"[WEB] Nessun risultato web per query '{web_query}' o errore durante la ricerca")
+                            print(f"[WEB] Nessun risultato web")
                     
+                    if not context.strip():
+                        print(f"[RAG-ERROR] Empty context for '{topic}' (no chunks + no web results)")
+                        continue  
+
                     if self.use_reflection:
                         self.progress.emit(
                             base_progress + 5, 
@@ -379,19 +393,32 @@ class GenerationThread(QThread):
                         )
                     
                     flashcards.append(flashcard)
-
-                    # Interrompi se abbiamo raggiunto il numero richiesto
                     if len(flashcards) >= self.num_cards:
                         break
                     
                 except Exception as e_topic:
-                    # Don't block everything if a single topic fails
                     print(f"Error generating flashcard for '{topic}': {e_topic}")
                     continue
+            
+            if not self.use_web_search and len(flashcards) == 0:
+                if topics_with_no_chunks == len(topics):
+                    #do errore, no web search. nessun chunk trovato
+                    self.error.emit(
+                        "No Relevant Content Found",
+                        f"Cannot find relevant information in your documents.\n\n"
+                        f"Query: '{self.user_query or self.subject_name}'\n\n"
+                        f"Suggestions:\n"
+                        f"• Try a broader query\n"
+                        f"• Enable Web Search for external information\n"
+                        f"• Check if documents contain this topic\n"
+                        f"• Lower RAG_SCORE_THRESHOLD in .env (current: {self.rag_service.score_threshold})"
+                    )
+                    return []
             
             print("[DEBUG] 7. _generate_with_rag generation completed.")
             self.progress.emit(100, "Generation completed!")
             return flashcards
+
 
         except ConnectionError as e:
             print("======================================================")
