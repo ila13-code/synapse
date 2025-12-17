@@ -1232,21 +1232,39 @@ class SubjectWindow(QMainWindow):
                 )
                 return
         else:
-            # Usa Google Gemini API
-            api_key = os.environ.get('GEMINI_API_KEY', '')
+            # Usa Google Gemini API con Round Robin delle chiavi
+            api_keys = []
             
-            if not api_key:
+            # 1. Cerca la chiave standard
+            main_key = os.environ.get('GEMINI_API_KEY', '').strip()
+            if main_key:
+                api_keys.append(main_key)
+            
+            # 2. Cerca chiavi numerate (GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.)
+            # Scansiona un range ragionevole, es. 1-10
+            for i in range(1, 11):
+                key_var = f"GEMINI_API_KEY_{i}"
+                k = os.environ.get(key_var, '').strip()
+                if k:
+                    api_keys.append(k)
+            
+            # Rimuovi duplicati mantenendo l'ordine (se main_key e KEY_1 sono uguali)
+            api_keys = list(dict.fromkeys(api_keys))
+            
+            if not api_keys:
                 QMessageBox.warning(
                     self,
                     "Missing API Key",
                     "Configure Google Gemini API Key in .env file before generating flashcards.\n\n"
                     "Open .env file and set:\n"
-                    "GEMINI_API_KEY=your-api-key"
+                    "GEMINI_API_KEY=your-api-key\n"
+                    "OR set multiple keys (GEMINI_API_KEY_1, GEMINI_API_KEY_2, ...) for periodic rotation."
                 )
                 return
             
             model_name = os.environ.get('GEMINI_MODEL', 'gemini-2.0-flash-exp')
-            ai_service = AIService(api_key, model_name)
+            # Passa la lista di chiavi (o singola)
+            ai_service = AIService(api_keys, model_name)
         
         # Crea il servizio Reflection
         reflection_service = ReflectionService(ai_service)

@@ -5,13 +5,42 @@ from google import genai
 
 
 class AIService:
-    def __init__(self, api_key: str, model_name: str = 'gemini-2.5-flash'):
-        self.client = genai.Client(api_key=api_key)
+    def __init__(self, api_keys: List[str] | str, model_name: str = 'gemini-2.5-flash'):
+        """
+        Initialize AIService with one or multiple API keys for round-robin usage.
+        
+        Args:
+            api_keys: A single API key string or a list of API key strings.
+            model_name: The name of the Gemini model to use.
+        """
+        if isinstance(api_keys, str):
+            self.api_keys = [api_keys]
+        else:
+            self.api_keys = [k for k in api_keys if k] # Filter empty keys
+            
+        if not self.api_keys:
+            raise ValueError("At least one valid API key must be provided")
+
+        # Create a pool of clients, one for each key
+        self.clients = [genai.Client(api_key=k) for k in self.api_keys]
+        self.current_client_index = 0
         self.model_name = model_name
+        
+        print(f"[AIService] Initialized with {len(self.clients)} API keys")
+    
+    def _get_next_client(self):
+        """Returns the next client in the rotation"""
+        client = self.clients[self.current_client_index]
+        # Rotate index for next call
+        self.current_client_index = (self.current_client_index + 1) % len(self.clients)
+        return client
     
     def _call_api(self, prompt: str) -> str:
         try:
-            response = self.client.models.generate_content(
+            # Get client from rotation
+            client = self._get_next_client()
+            
+            response = client.models.generate_content(
                 model=self.model_name,
                 contents=prompt
             )
@@ -62,7 +91,10 @@ class AIService:
                     [{{"front": "Atomic, precise question", "back": "Concise answer", "difficulty": "easy|medium|hard", "tags": ["tag1", "tag2"]}}]"""
 
         try:
-            response = self.client.models.generate_content(
+            # Get client from rotation
+            client = self._get_next_client()
+            
+            response = client.models.generate_content(
                 model=self.model_name,
                 contents=prompt
             )

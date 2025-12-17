@@ -240,8 +240,19 @@ class RAGService:
             self.local_model = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
         else:
             self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+            
+            # Fallback a chiavi numerate se la chiave principale manca
             if not self.gemini_api_key:
-                print("ATTENZIONE: GEMINI_API_KEY non trovata.")
+                for i in range(1, 11):
+                    k = os.getenv(f"GEMINI_API_KEY_{i}")
+                    if k:
+                        self.gemini_api_key = k
+                        print(f"[RAG] Usando {f'GEMINI_API_KEY_{i}'} per embedding")
+                        break
+
+            if not self.gemini_api_key:
+                print("ATTENZIONE: Nessuna GEMINI_API_KEY valida trovata (.env).")
+            
             self.gemini_embed_model = "gemini-embedding-001"
         
         self.embedder = self._create_embedding_function()
